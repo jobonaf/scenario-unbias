@@ -46,13 +46,20 @@ process_data <- function(observed_data, base_case, scenario,
     
   } else if (unbias_sequence == "CAI") {
     # Calibrate coefficients (using observed data), apply correction, then interpolate the corrected data
+    
+    # Extract values from the 'scenario' based on the coordinates in 'observed_data'
+    scenario_sparse <- terra::extract(scenario, observed_data[, c("x", "y")], xy = TRUE)
+    
+    # Apply correction to the sparse scenario
     calibrated_coefficients <- calibrate(
       obs = observed_data, 
       mod = base_case, 
       calibration_method = calibration_method, 
       correction_algorithm = correction_algorithm
     )
-    corrected_sparse <- apply_correction(scenario, calibrated_coefficients, correction_algorithm)  # Apply correction
+    corrected_sparse <- apply_correction(scenario_sparse, calibrated_coefficients, correction_algorithm)  # Apply correction
+    
+    # Interpolate the corrected sparse data
     interpolated_data <- do_interpolation(corrected_sparse, scenario, interpolation_method)  # Interpolate corrected data
     return(interpolated_data)
     
