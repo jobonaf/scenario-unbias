@@ -15,9 +15,28 @@ removing bias from air quality scenarios
 
 ## data
 
-|file name|description|source|
-|---------|-----------|------|
-|pm25_avg_18.tif|PM2.5 2018 annual mean, interpolated on 1km grid|downloaded from https://www.eea.europa.eu/en/datahub/datahubitem-view/938bea70-07fc-47e9-8559-8a09f7f92494|
-|pm25_avg_22.tif|PM2.5 2022 annual mean, interpolated on 1km grid|downloaded from https://www.eea.europa.eu/en/datahub/datahubitem-view/938bea70-07fc-47e9-8559-8a09f7f92494|
-|eea_obs_pm25_bkg_2022.csv|PM2.5 2022 annual mean, measured in European background stations|prepared with prepare-aq-obs-data.R|
-|eea_obs_pm25_bkg_2023.csv|PM2.5 2023 annual mean, measured in European background stations|prepared with prepare-aq-obs-data.R|
+The dataset, located in `data/fairmode-wg5-exercise-202501/`, supports FAIRMODE WG5 exercise for AQ scenario unbiasing. It contains annual data for NO₂, O₃, and PM₂.₅ (humidity-adjusted at 50%) in gridded and point formats.
+
+### `YEARLY`
+#### 1. `BaseCase_Perturbed_Gridded`
+Gridded NetCDF files for perturbed base case:
+
+- `BaseCase_PERT_NO2_YEARLY.nc`: Annual NO₂ (µg/m³).
+- `BaseCase_PERT_O3_YEARLY.nc`: Annual O₃ (ppb).
+- `BaseCase_PERT_PM25_rh50_YEARLY.nc`: Annual PM₂.₅ (µg/m³).
+
+#### 2. `BaseCase_Reference_Points`
+Point-based reference data in CSV:
+
+- `yearly_SURF_ppb_O3.csv`: O₃ (ppb).
+- `yearly_SURF_ug_NO2.csv`: NO₂ (µg/m³).
+- `yearly_SURF_ug_PM25_rh50.csv`: PM₂.₅ (µg/m³).
+
+#### 3. `Scenario_Perturbed_Gridded`
+Gridded NetCDF files for perturbed scenario:
+
+- `SCEN_PERT_NO2_YEARLY.nc`: Annual NO₂ (µg/m³).
+- `SCEN_PERT_O3_YEARLY.nc`: Annual O₃ (ppb).
+- `SCEN_PERT_PM25_rh50_YEARLY.nc`: Annual PM₂.₅ (µg/m³).
+
+**Formats:** NetCDF for gridded data, CSV for point data.
