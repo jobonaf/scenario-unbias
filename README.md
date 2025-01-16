@@ -8,10 +8,13 @@ removing bias from air quality scenarios
 |prepare-aq-obs-data.R|prepare air quality data for script testing|
 |check-aq-raster.R|check the prepared AQ data|
 |unbias-aq-scenario.R|function to process the unbiasing of a scenario|
-|interpolate-points-to-grid.R|interpolate sparse data (or coefficients) to a grid|
-|test_interpolation.R|test and plot results of the interpolation|
+|spatialize-points-to-grid.R|spatialize sparse data (or coefficients) to a grid|
+|test_spatialization.R|test and plot results of the spatialization|
 |calibrate-unbias-coefficient.R|calibrate the coefficients for correction, comparing base case vs observed data|
 |apply-unbiasing.R|apply the correction coefficients to a scenario|
+|read-fairmode-data.R|read the dataset for FAIRMODE WG5 exercise|
+|map-fairmode-data.R|plot on a map FAIRMODE data|
+|dashboard-fairmode-data.Rmd|show on a dashboard maps of FAIRMODE data|
 
 ## data
 
