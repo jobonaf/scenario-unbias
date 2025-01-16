@@ -1,4 +1,5 @@
-# scenario-unbias
+# scenario-unbias <img src='inst/unbias2.png' align="right" height="138" />
+
 removing bias from air quality scenarios
 
 ## R code
