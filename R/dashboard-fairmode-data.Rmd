@@ -1,0 +1,32 @@
+---
+title: "dataset for WG5 exercise"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(leaflet)
+source("R/map-fairmode-data.R")
+```
+
+
+Column {.tabset}
+-------------------------------------
+
+### NO2
+```{r}
+create_leaflet_map("NO2")
+```
+
+### O3
+```{r}
+create_leaflet_map("O3")
+```
+
+### PM2.5
+```{r}
+create_leaflet_map("PM25")
+```
