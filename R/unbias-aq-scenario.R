@@ -1,3 +1,8 @@
+# External functions
+source("R/spatialize-points-to-grid.R")
+source("R/calibrate-unbias-coefficients.R")
+source("R/apply-unbiasing.R")
+
 # Main process function
 process_data <- function(observed_data, base_case, scenario, 
                          unbias_sequence       = c("SCA", "CSA", "CAS", "CA"), 

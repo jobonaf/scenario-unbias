@@ -2,7 +2,7 @@ library(tidyverse)
 library(terra)
 library(fields)
 library(gstat)
-library(sf)
+library(futile.logger)
 
 # Spatialization function (updated)
 spatialize <- function(points_data, grid_data, 
@@ -17,9 +17,10 @@ spatialize <- function(points_data, grid_data,
   result <- empty_grid  # Start with an empty raster grid
   
   # Select spatialization method
+  flog.info("Spatializing with method '%s'", method)
   if (method == "tps") {
     # Thin Plate Spline spatialization
-    tps_model <- Tps(points_data[, c("x", "y")], points_data$values, ...)
+    tps_model <- Tps(points_data[, c("x", "y")], points_data$value, ...)
     result <- interpolate(empty_grid, tps_model)
     
   } else if (method == "idw") {
@@ -27,7 +28,7 @@ spatialize <- function(points_data, grid_data,
     idp  <- params$idp %||% 2     # Default power parameter for IDW
     nmax <- params$nmax %||% Inf  # Default nmax
     gstat_model <- gstat(NULL, id = "var", formula = var ~ 1, locations = ~x + y, 
-                         data = data.frame(points_data, var = points_data$values), 
+                         data = data.frame(points_data, var = points_data$value), 
                          nmax = nmax, 
                          set = list(idp = idp), ...)
     result <- interpolate(empty_grid, gstat_model, index = 1)
@@ -39,11 +40,11 @@ spatialize <- function(points_data, grid_data,
     v_range  <- params$range  %||% NA    # Default range parameter of the variogram model component
     v_nugget <- params$nugget %||% NA    # Default nugget component of the variogram
     sample_variogram <- variogram(var ~ 1, ~x + y, 
-                                  data = data.frame(points_data, var = points_data$values))
+                                  data = data.frame(points_data, var = points_data$value))
     variogram_model <- vgm(psill = v_psill, model = v_model, range = v_range, nugget = v_nugget, ...)
     fit_variogram <- fit.variogram(sample_variogram, variogram_model)
     gstat_model <- gstat(NULL, "var", var ~ 1, 
-                         data = data.frame(points_data, var = points_data$values), 
+                         data = data.frame(points_data, var = points_data$value), 
                          locations = ~x + y, model = fit_variogram)
     result <- interpolate(grid_data, gstat_model, index = 1)
     
