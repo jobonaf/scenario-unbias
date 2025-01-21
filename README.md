@@ -2,6 +2,9 @@
 
 The repository contains code designed to test different approaches for reducing bias in air quality (AQ) scenarios, specifically within the context of the FAIRMODE WG5 exercise. While the primary focus is on this particular exercise, the methods and tools provided can also be useful for unbiasing AQ scenarios more generally, even outside of the FAIRMODE framework. 
 
+For an overview of the methodology, refer to the [Unbiasing Air Quality Scenarios Documentation](https://github.com/jobonaf/scenario-unbias/blob/main/doc/unbiasing-aq-scenarios.md).
+
+
 ## FAIRMODE WG5 Exercise
 
 The FAIRMODE WG5 bias projection exercise aims to benchmark methodologies for removing bias from air quality model simulations, particularly in future policy scenarios. It focuses on deriving bias correction fields and projecting biases into future scenarios using synthetic datasets. Participants apply their preferred methodologies to post-process provided data and benchmark their results against known synthetic truths. The exercise includes annual data for PM2.5, NO2, and O3 in gridded (NetCDF) and point (CSV) formats for both reference and future projections.
