@@ -143,4 +143,94 @@ Options:
 ### Output
 
 Processed data will be saved in the specified output directory. By default, this is `data/processed`.
+
 This flexible script allows for batch processing and comparison of multiple unbiasing methods, ensuring comprehensive analysis of the FAIRMODE data.
+
+---
+
+## How to Contribute
+
+We welcome contributions to this repository! To ensure a smooth collaboration, please follow these steps based on your needs:
+
+### For Personal Use
+If you want to work independently on a stable copy of the repository:
+
+1. Clone the repository and work directly on the `main` branch.
+2. Pull updates periodically to stay aligned with the latest stable version:
+   ```bash
+   git pull origin main
+   ```
+3. Avoid making pull requests.
+
+### For Contributors
+If you want to contribute code to the repository:
+
+1. **Clone the Repository**
+   Clone the repository to your local machine:
+   ```bash
+   git clone https://github.com/jobonaf/scenario-unbias.git
+   cd scenario-unbias
+   ```
+
+2. **Switch to the Development Branch**
+   Always work on the `devel` branch to keep the `main` branch stable:
+   ```bash
+   git checkout -b devel origin/devel
+   ```
+
+3. **Make Your Changes**
+   Develop your features or fix bugs locally. Make sure your changes are properly tested.
+
+4. **Commit and Push**
+   Commit your changes with a descriptive message:
+   ```bash
+   git add .
+   git commit -m "Add feature X or Fix bug Y"
+   git push origin devel
+   ```
+
+5. **Open a Pull Request**
+   - Navigate to the repository on GitHub.
+   - Open a pull request to align `devel` with `main`.
+   - Add a clear description of your changes and why they are needed.
+
+6. **Code Review and Merge**
+   The codeowner will review your pull request and merge it into the `main` branch if everything is in order.
+
+### Staying Updated
+To keep your local copy of `devel` in sync with the latest changes, periodically run:
+```bash
+git fetch origin
+git merge origin/devel
+```
+
+### Submitting an Issue
+
+If you encounter a bug, have a question, or want to propose a new feature, you can submit an issue to help improve the repository. Here's how:
+
+1. **Navigate to the Issues Tab**  
+   Go to the repository on GitHub and click on the **"Issues"** tab.
+
+2. **Click "New Issue"**  
+   Click the **"New Issue"** button to start creating your report.
+
+3. **Choose an Issue Type**  
+   Depending on the repository's setup, you might see templates for different types of issues (e.g., bug reports, feature requests). Select the most appropriate one.
+
+4. **Provide a Clear Title and Description**  
+   - Write a concise title summarizing the issue.
+   - In the description, include:
+     - A detailed explanation of the problem or suggestion.
+     - Steps to reproduce the bug (if applicable).
+     - Relevant files, code snippets, or screenshots to help illustrate the issue.
+
+5. **Assign Labels (Optional)**  
+   If you have permission, add labels to categorize the issue (e.g., `bug`, `enhancement`, `question`).
+
+6. **Submit the Issue**  
+   Once everything is filled out, click **"Submit New Issue"** to post it.
+
+7. **Stay Engaged**  
+   Be prepared to answer follow-up questions or clarify details as contributors review your issue.
+
+By submitting a well-documented issue, you'll help the maintainers address problems or implement improvements more effectively!
