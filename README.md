@@ -143,5 +143,4 @@ Options:
 ### Output
 
 Processed data will be saved in the specified output directory. By default, this is `data/processed`.
-
 This flexible script allows for batch processing and comparison of multiple unbiasing methods, ensuring comprehensive analysis of the FAIRMODE data.
