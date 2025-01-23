@@ -94,9 +94,12 @@ create_leaflet_map <- function(parameter) {
   return(map)
 }
 
-map <- create_leaflet_map("NO2")
-map
-map <- create_leaflet_map("PM25")
-map
-map <- create_leaflet_map("O3")
-map
+# Example
+if(FALSE) {
+  map <- create_leaflet_map("NO2")
+  map
+  map <- create_leaflet_map("PM25")
+  map
+  map <- create_leaflet_map("O3")
+  map
+}
