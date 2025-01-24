@@ -4,6 +4,8 @@ source("R/calibrate-unbias-coefficients.R")
 source("R/apply-unbiasing.R")
 
 # Main process function
+## SPLIT Point INTO PtGlo e PtLoc
+#################
 process_data <- function(observed_data, base_case, scenario, 
                          unbias_sequence       = c("SCA", "CSA", "CAS", "CA"), 
                          calibration_method    = c("Point", "Grid", "Cell", "Neigh"), 
@@ -53,7 +55,8 @@ process_data <- function(observed_data, base_case, scenario,
     # Calibrate coefficients (using observed data), apply correction, then spatialize the corrected data
     
     # Extract values from the 'scenario' based on the coordinates in 'observed_data'
-    scenario_sparse <- terra::extract(scenario, observed_data[, c("x", "y")], xy = TRUE)
+    scenario_values <- terra::extract(scenario, observed_data[, c("x", "y")], xy = TRUE)
+    scenario_sparse <- data.frame(observed_data[, c("x", "y")], value = scenario_values)
     
     # Apply correction to the sparse scenario
     calibrated_coefficients <- calibrate(

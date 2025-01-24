@@ -6,8 +6,8 @@ library(futile.logger)
 
 # Spatialization function (updated)
 spatialize <- function(points_data, grid_data, 
-                              method = c("tps", "idw", "ok", "ked"), 
-                              params = list(), ...) {
+                       method = c("tps", "idw", "ok", "ked"), 
+                       params = list(), ...) {
   # Validate input
   if (!inherits(grid_data, "SpatRaster")) stop("'grid_data' must be a SpatRaster object.")
   if (!is.data.frame(points_data) || !all(c("x", "y") %in% colnames(points_data))) stop("'points_data' must be a data frame with 'x' and 'y' columns.")
@@ -54,15 +54,15 @@ spatialize <- function(points_data, grid_data,
     v_model  <- params$model  %||% "Sph" # Default model type
     v_range  <- params$range  %||% NA    # Default range parameter of the variogram model component
     v_nugget <- params$nugget %||% NA    # Default nugget component of the variogram
-    drift_values <- as.data.frame(extract(grid_data, points_data[, c("x", "y")])[, -1])
+    drift_values <- as.data.frame(terra::extract(grid_data, points_data[, c("x", "y")])[, -1])
     names(drift_values) <- names(grid_data)
     model_formula <- as.formula(paste0("var ~ ", paste(names(drift_values), collapse = " + ")))
     sample_variogram <- variogram(model_formula, ~x + y, 
-                                  data = data.frame(points_data, var = points_data$values, drift_values))
+                                  data = data.frame(points_data, var = points_data$value, drift_values))
     variogram_model <- vgm(psill = v_psill, model = v_model, range = v_range, nugget = v_nugget, ...)
     fit_variogram <- fit.variogram(sample_variogram, variogram_model)
     gstat_model <- gstat(NULL, "var", model_formula, 
-                         data = data.frame(points_data, var = points_data$values, drift_values), 
+                         data = data.frame(points_data, var = points_data$value, drift_values), 
                          locations = ~x + y, model = fit_variogram)
     result <- interpolate(grid_data, gstat_model, index = 1)
     

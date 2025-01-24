@@ -31,7 +31,7 @@ create_leaflet_map <- function(parameter) {
   bins[1] <- min(all_values)
   bins[length(bins)] <- max(all_values)
   color_palette <- colorBin(
-    palette = "YlGnBu", 
+    palette = "Spectral", reverse = T,
     domain = all_values, 
     bins = bins,
     na.color = "transparent"

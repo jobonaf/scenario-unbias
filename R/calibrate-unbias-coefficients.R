@@ -1,3 +1,7 @@
+library(terra)
+
+## SPLIT Point INTO PtGlo e PtLoc
+################
 calibrate <- function(obs, mod, 
                       calibration_method = c("Point", "Grid", "Cell", "Neigh"), 
                       correction_algorithm = c("Add", "Mult", "Lin"),
@@ -25,7 +29,7 @@ calibrate <- function(obs, mod,
   if (calibration_method == "Point") {
     # Extract model values at observation points
     obs_values <- obs$value  # Assuming 'value' column contains observed values
-    mod_values <- terra::extract(mod, obs[, c("x", "y")], xy = FALSE)
+    mod_values <- terra::extract(mod, obs[, c("x", "y")], xy = FALSE, ID=FALSE)[[1]]
   } else if (calibration_method == "Grid") {
     # Use raster values directly for grid-based calibration
     obs_values <- terra::values(obs)
@@ -46,15 +50,20 @@ calibrate <- function(obs, mod,
   
   # Calculate correction coefficients
   if (correction_algorithm == "Add") {
-    coefficient <- ifelse(inherits(obs_values, "SpatRaster"),
-                          obs_values - mod_values,
-                          mean(obs_values, na.rm = TRUE) - mean(mod_values, na.rm = TRUE))
+    if (inherits(obs_values, "SpatRaster")) {
+      coefficient <- obs_values - mod_values
+    } else {
+      coefficient <- mean(obs_values, na.rm = TRUE) - mean(mod_values, na.rm = TRUE)
+    }
   } else if (correction_algorithm == "Mult") {
-    coefficient <- ifelse(inherits(obs_values, "SpatRaster"),
-                          obs_values / mod_values,
-                          mean(obs_values, na.rm = TRUE) / mean(mod_values, na.rm = TRUE))
+    if (inherits(obs_values, "SpatRaster")) {
+      coefficient <- obs_values / mod_values
+    } else {
+      coefficient <- mean(obs_values, na.rm = TRUE) / mean(mod_values, na.rm = TRUE)
+    }
   } else if (correction_algorithm == "Lin") {
-    fit <- lm(obs_values ~ mod_values, na.action = na.exclude)
+    fit <- lm(obs_values ~ mod_values, na.action = na.exclude, 
+              data = data.frame(obs_values, mod_values))
     coefficient <- list(intercept = coef(fit)[1], slope = coef(fit)[2])
   }
   
