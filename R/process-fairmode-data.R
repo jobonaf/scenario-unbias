@@ -1,5 +1,3 @@
-
-# Define command-line arguments
 suppressPackageStartupMessages(library("optparse"))
 option_list <- list(
   make_option(c("-p", "--pollutants"), type = "character", default = "NO2,O3,PM25",
@@ -8,7 +6,7 @@ option_list <- list(
               help = "Output directory for processed data [default: %default]"),
   make_option(c("-u", "--unbias_sequences"), type = "character", default = "SCA,CSA,CAS,CA",
               help = "Comma-separated list of unbias sequences [default: %default]"),
-  make_option(c("-c", "--calibration_methods"), type = "character", default = "Point,Grid,Cell",
+  make_option(c("-c", "--calibration_methods"), type = "character", default = "All,Each,Grid,Cell",
               help = "Comma-separated list of calibration methods [default: %default]"),
   make_option(c("-a", "--correction_algorithms"), type = "character", default = "Add,Mult,Lin",
               help = "Comma-separated list of correction algorithms [default: %default]"),
@@ -31,21 +29,30 @@ library(terra)
 library(glue)
 library(futile.logger)
 
-# scripts
+# Scripts
 source("R/read-fairmode-data.R")
 source("R/unbias-aq-scenario.R")
 
 # Create output directory if it doesn't exist
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 
-# Function to process data for a single combination
+# Valid combinations
+is_valid_combination <- function(unbias_sequence, calibration_method) {
+  if (unbias_sequence == "SCA" && calibration_method %in% c("Each", "All")) {
+    return(FALSE)
+  }
+  if (unbias_sequence %in% c("CSA", "CAS", "CA") && !calibration_method %in% c("Each", "All")) {
+    return(FALSE)
+  }
+  return(TRUE)
+}
+
 process_combination <- function(pollutant, output_dir, unbias_sequence, 
                                 calibration_method, correction_algorithm, 
                                 spatialization_method) {
   flog.info("Processing pollutant: %s with combination: %s.%s.%s.%s", 
             pollutant, unbias_sequence, calibration_method, correction_algorithm, spatialization_method)
   
-  # Check if the combination is valid
   if (!is_valid_combination(unbias_sequence, calibration_method)) {
     flog.warn("Invalid combination for pollutant %s: %s.%s.%s.%s", 
               pollutant, unbias_sequence, calibration_method, 
@@ -53,7 +60,6 @@ process_combination <- function(pollutant, output_dir, unbias_sequence,
     return(NULL)
   }
   
-  # Read and process data
   flog.info("Reading data for pollutant: %s", pollutant)
   data_list <- read_data(pollutant)
   
@@ -68,29 +74,22 @@ process_combination <- function(pollutant, output_dir, unbias_sequence,
     spatialization_method = spatialization_method
   )
   
-  # Save processed data
   fileout <- glue(
-    "{output_dir}/{pollutant}_",
-    "{unbias_sequence}.{calibration_method}.{correction_algorithm}.{spatialization_method}",
-    "_unbiased_scenario.tif")
-  flog.info("Saving processed raster to file: %s", fileout)
-  writeRaster(unbias_result, filename = fileout, overwrite = TRUE)
+    "{output_dir}/{pollutant}_{unbias_sequence}.{calibration_method}.{correction_algorithm}.{spatialization_method}")
+  
+  if (calibration_method == "Each" && unbias_sequence == "CA") {
+    fileout <- paste0(fileout, "_unbiased_scenario.csv")
+    flog.info("Saving processed data frame to file: %s", fileout)
+    write.csv(unbias_result, fileout, row.names = FALSE)
+  } else {
+    fileout <- paste0(fileout, "_unbiased_scenario.tif")
+    flog.info("Saving processed raster to file: %s", fileout)
+    writeRaster(unbias_result, filename = fileout, overwrite = TRUE)
+  }
   
   flog.info("Completed processing for pollutant: %s", pollutant)
 }
 
-# Function to validate combination
-is_valid_combination <- function(unbias_sequence, calibration_method) {
-  if (unbias_sequence == "SCA" && calibration_method == "Point") {
-    return(FALSE)
-  }
-  if (unbias_sequence %in% c("CSA", "CAS", "CA") && calibration_method != "Point") {
-    return(FALSE)
-  }
-  return(TRUE)
-}
-
-# Main script
 flog.info("Starting data processing...")
 for (pollutant in pollutants) {
   for (unbias_sequence in unbias_sequences) {
