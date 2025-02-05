@@ -1,6 +1,8 @@
 
 # Define command-line arguments
 suppressPackageStartupMessages(library("optparse"))
+
+# Define command-line options
 option_list <- list(
   make_option(c("-p", "--pollutants"), type = "character", default = "NO2,O3,PM25",
               help = "Comma-separated list of pollutants to process [default: %default]"),
@@ -18,6 +20,8 @@ option_list <- list(
 
 # Parse command-line arguments
 opt <- parse_args(OptionParser(option_list = option_list))
+
+# Convert comma-separated string inputs into lists
 pollutants <- strsplit(opt$pollutants, ",")[[1]]
 output_dir <- opt$output_dir
 unbias_sequences <- strsplit(opt$unbias_sequences, ",")[[1]]
@@ -31,14 +35,39 @@ library(terra)
 library(glue)
 library(futile.logger)
 
+<<<<<<< Updated upstream
 # scripts
+=======
+# Load external scripts containing necessary functions
+>>>>>>> Stashed changes
 source("R/read-fairmode-data.R")
 source("R/unbias-aq-scenario.R")
 
-# Create output directory if it doesn't exist
+# Create output directory if it does not exist
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 
+<<<<<<< Updated upstream
 # Function to process data for a single combination
+=======
+# Function to check if a given combination of unbias sequence and calibration method is valid
+is_valid_combination <- function(unbias_sequence, calibration_method, correction_algorithm) {
+  if (!correction_algorithm %in% c("Add", "Mult") && calibration_method %in% c("Each", "Cell")) {
+    return(FALSE)
+  }
+  if (unbias_sequence == "SCA" && calibration_method %in% c("Each", "All")) {
+    return(FALSE)
+  }
+  if (unbias_sequence %in% c("CAS", "CA") && !calibration_method %in% c("Each", "All")) {
+    return(FALSE)
+  }
+  if (unbias_sequence == "CSA" && calibration_method != "Each") {
+    return(FALSE)
+  }
+  return(TRUE)
+}
+
+# Function to process a specific combination of parameters
+>>>>>>> Stashed changes
 process_combination <- function(pollutant, output_dir, unbias_sequence, 
                                 calibration_method, correction_algorithm, 
                                 spatialization_method) {
@@ -46,17 +75,26 @@ process_combination <- function(pollutant, output_dir, unbias_sequence,
             pollutant, unbias_sequence, calibration_method, correction_algorithm, spatialization_method)
   
   # Check if the combination is valid
+<<<<<<< Updated upstream
   if (!is_valid_combination(unbias_sequence, calibration_method)) {
+=======
+  if (!is_valid_combination(unbias_sequence, calibration_method, correction_algorithm)) {
+>>>>>>> Stashed changes
     flog.warn("Invalid combination for pollutant %s: %s.%s.%s.%s", 
               pollutant, unbias_sequence, calibration_method, 
               correction_algorithm, spatialization_method)
     return(NULL)
   }
   
+<<<<<<< Updated upstream
   # Read and process data
+=======
+  # Read input data for the pollutant
+>>>>>>> Stashed changes
   flog.info("Reading data for pollutant: %s", pollutant)
   data_list <- read_data(pollutant)
   
+  # Apply the unbiasing function
   flog.info("Applying unbiasing function for pollutant: %s", pollutant)
   unbias_result <- process_data(
     observed_data = data_list$observed_data,
@@ -68,6 +106,7 @@ process_combination <- function(pollutant, output_dir, unbias_sequence,
     spatialization_method = spatialization_method
   )
   
+<<<<<<< Updated upstream
   # Save processed data
   fileout <- glue(
     "{output_dir}/{pollutant}_",
@@ -91,6 +130,27 @@ is_valid_combination <- function(unbias_sequence, calibration_method) {
 }
 
 # Main script
+=======
+  # Define the output file name based on parameters
+  fileout <- glue(
+    "{output_dir}/{pollutant}_{unbias_sequence}.{calibration_method}.{correction_algorithm}.{spatialization_method}")
+  
+  # Determine the type of output to save based on the data structure
+  if (inherits(unbias_result, "SpatRaster")) {
+    fileout <- paste0(fileout, "_unbiased_scenario.tif")
+    flog.info("Saving processed raster to file: %s", fileout)
+    writeRaster(unbias_result, filename = fileout, overwrite = TRUE)
+  } else if (is.data.frame(unbias_result)) {
+    fileout <- paste0(fileout, "_unbiased_scenario.csv")
+    flog.info("Saving processed data frame to file: %s", fileout)
+    write.csv(unbias_result, fileout, row.names = FALSE)
+  } else {
+    stop("Unexpected data type for 'unbias_result'. Expected SpatRaster or data.frame.")
+  }
+}
+
+# Main processing loop
+>>>>>>> Stashed changes
 flog.info("Starting data processing...")
 for (pollutant in pollutants) {
   for (unbias_sequence in unbias_sequences) {

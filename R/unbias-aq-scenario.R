@@ -22,8 +22,20 @@ process_data <- function(observed_data, base_case, scenario,
   if (unbias_sequence == "SCA" && calibration_method == "Point") {
     stop("For sequence 'SCA', calibration method 'Point' is not allowed.")
   }
+<<<<<<< Updated upstream
   if (unbias_sequence %in% c("CSA", "CAS", "CA") && calibration_method != "Point") {
     stop("For sequences 'CSA', 'CAS', and 'CA', calibration method must be 'Point'.")
+=======
+  if (unbias_sequence %in% c("CAS", "CA") && !calibration_method %in% c("All", "Each")) {
+    stop("For sequences 'CAS', and 'CA', calibration method must be 'All' or 'Each'.")
+  }
+  if (unbias_sequence == "CSA" && calibration_method != "Each") {
+    stop("For sequence 'CSA' calibration method must be 'Each'.")
+  }
+  # Check compatibility between calibration method and correction algorithm
+  if (calibration_method %in% c("Each", "Cell") && !correction_algorithm %in% c("Add", "Mult")) {
+    stop("Calibration methods 'Each' and 'Cell' are only compatible with correction algorithms 'Add' and 'Mult'.")
+>>>>>>> Stashed changes
   }
   
   # Execute based on the chosen unbias_sequence
@@ -36,7 +48,15 @@ process_data <- function(observed_data, base_case, scenario,
       calibration_method = calibration_method, 
       correction_algorithm = correction_algorithm
     )
+<<<<<<< Updated upstream
     corrected_data <- apply_correction(scenario, calibrated_coefficients, correction_algorithm)  # Apply correction
+=======
+    # Apply correction
+    corrected_data <- apply_correction(
+      scenario = scenario, 
+      coefficients = calibrated_coefficients, 
+      correction_algorithm = correction_algorithm)  
+>>>>>>> Stashed changes
     return(corrected_data)
     
   } else if (unbias_sequence == "CSA") {
@@ -48,7 +68,15 @@ process_data <- function(observed_data, base_case, scenario,
       correction_algorithm = correction_algorithm
     )
     spatialized_coefficients <- spatialize(calibrated_coefficients, scenario, spatialization_method)  # Spatialize coefficients
+<<<<<<< Updated upstream
     corrected_data <- apply_correction(scenario, spatialized_coefficients, correction_algorithm)  # Apply correction
+=======
+    # Apply correction
+    corrected_data <- apply_correction(
+      scenario = scenario, 
+      coefficients = spatialized_coefficients, 
+      correction_algorithm = correction_algorithm)  
+>>>>>>> Stashed changes
     return(corrected_data)
     
   } else if (unbias_sequence == "CAS") {
@@ -65,7 +93,15 @@ process_data <- function(observed_data, base_case, scenario,
       calibration_method = calibration_method, 
       correction_algorithm = correction_algorithm
     )
+<<<<<<< Updated upstream
     corrected_sparse <- apply_correction(scenario_sparse, calibrated_coefficients, correction_algorithm)  # Apply correction
+=======
+    # Apply correction
+    corrected_sparse <- apply_correction(
+      scenario = scenario, 
+      coefficients = calibrated_coefficients, 
+      correction_algorithm = correction_algorithm)  
+>>>>>>> Stashed changes
     
     # Spatialize the corrected sparse data
     spatialized_data <- spatialize(corrected_sparse, scenario, spatialization_method)  # Spatialize corrected data
@@ -79,7 +115,15 @@ process_data <- function(observed_data, base_case, scenario,
       calibration_method = calibration_method, 
       correction_algorithm = correction_algorithm
     )
+<<<<<<< Updated upstream
     corrected_data <- apply_correction(scenario, calibrated_coefficients, correction_algorithm)  # Apply correction
+=======
+    # Apply correction
+    corrected_data <- apply_correction(
+      scenario = scenario, 
+      coefficients = calibrated_coefficients, 
+      correction_algorithm = correction_algorithm)  
+>>>>>>> Stashed changes
     return(corrected_data)
   }
 }

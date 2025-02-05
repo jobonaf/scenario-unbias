@@ -10,7 +10,7 @@ spatialize <- function(points_data, grid_data,
                        params = list(), ...) {
   # Validate input
   if (!inherits(grid_data, "SpatRaster")) stop("'grid_data' must be a SpatRaster object.")
-  if (!is.data.frame(points_data) || !all(c("x", "y") %in% colnames(points_data))) stop("'points_data' must be a data frame with 'x' and 'y' columns.")
+  if (!is.data.frame(points_data) || !all(c("x", "y", "value") %in% colnames(points_data))) stop("'points_data' must be a data frame with 'x', 'y' and 'value' columns.")
   
   # Prepare output raster (same grid as grid_data)
   empty_grid <- rast(grid_data)
