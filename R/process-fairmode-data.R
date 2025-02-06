@@ -1,6 +1,6 @@
-
-# Define command-line arguments
 suppressPackageStartupMessages(library("optparse"))
+
+# Define command-line options
 option_list <- list(
   make_option(c("-p", "--pollutants"), type = "character", default = "NO2,O3,PM25",
               help = "Comma-separated list of pollutants to process [default: %default]"),
@@ -8,7 +8,7 @@ option_list <- list(
               help = "Output directory for processed data [default: %default]"),
   make_option(c("-u", "--unbias_sequences"), type = "character", default = "SCA,CSA,CAS,CA",
               help = "Comma-separated list of unbias sequences [default: %default]"),
-  make_option(c("-c", "--calibration_methods"), type = "character", default = "Point,Grid,Cell",
+  make_option(c("-c", "--calibration_methods"), type = "character", default = "All,Each,Grid,Cell",
               help = "Comma-separated list of calibration methods [default: %default]"),
   make_option(c("-a", "--correction_algorithms"), type = "character", default = "Add,Mult,Lin",
               help = "Comma-separated list of correction algorithms [default: %default]"),
@@ -18,6 +18,8 @@ option_list <- list(
 
 # Parse command-line arguments
 opt <- parse_args(OptionParser(option_list = option_list))
+
+# Convert comma-separated string inputs into lists
 pollutants <- strsplit(opt$pollutants, ",")[[1]]
 output_dir <- opt$output_dir
 unbias_sequences <- strsplit(opt$unbias_sequences, ",")[[1]]
@@ -31,32 +33,51 @@ library(terra)
 library(glue)
 library(futile.logger)
 
-# scripts
+# Load external scripts containing necessary functions
 source("R/read-fairmode-data.R")
 source("R/unbias-aq-scenario.R")
 
-# Create output directory if it doesn't exist
+# Create output directory if it does not exist
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 
-# Function to process data for a single combination
+# Function to check if a given combination of unbias sequence and calibration method is valid
+is_valid_combination <- function(unbias_sequence, calibration_method, correction_algorithm) {
+  if (!correction_algorithm %in% c("Add", "Mult") && calibration_method %in% c("Each", "Cell")) {
+    return(FALSE)
+  }
+  if (unbias_sequence == "SCA" && calibration_method %in% c("Each", "All")) {
+    return(FALSE)
+  }
+  if (unbias_sequence %in% c("CAS", "CA") && !calibration_method %in% c("Each", "All")) {
+    return(FALSE)
+  }
+  if (unbias_sequence == "CSA" && calibration_method != "Each") {
+    return(FALSE)
+  }
+  return(TRUE)
+}
+
+# Function to process a specific combination of parameters
 process_combination <- function(pollutant, output_dir, unbias_sequence, 
                                 calibration_method, correction_algorithm, 
-                                spatialization_method) {
-  flog.info("Processing pollutant: %s with combination: %s.%s.%s.%s", 
-            pollutant, unbias_sequence, calibration_method, correction_algorithm, spatialization_method)
+                                spatialization_method = NULL) {
+  flog.info("Processing pollutant: %s with combination: %s.%s.%s%s", 
+            pollutant, unbias_sequence, calibration_method, correction_algorithm,
+            ifelse(is.null(spatialization_method), "", paste0(".", spatialization_method)))
   
   # Check if the combination is valid
-  if (!is_valid_combination(unbias_sequence, calibration_method)) {
-    flog.warn("Invalid combination for pollutant %s: %s.%s.%s.%s", 
+  if (!is_valid_combination(unbias_sequence, calibration_method, correction_algorithm)) {
+    flog.warn("Invalid combination for pollutant %s: %s.%s.%s%s", 
               pollutant, unbias_sequence, calibration_method, 
-              correction_algorithm, spatialization_method)
+              correction_algorithm, ifelse(is.null(spatialization_method), "", paste0(".", spatialization_method)))
     return(NULL)
   }
   
-  # Read and process data
+  # Read input data for the pollutant
   flog.info("Reading data for pollutant: %s", pollutant)
   data_list <- read_data(pollutant)
   
+  # Apply the unbiasing function
   flog.info("Applying unbiasing function for pollutant: %s", pollutant)
   unbias_result <- process_data(
     observed_data = data_list$observed_data,
@@ -65,46 +86,57 @@ process_combination <- function(pollutant, output_dir, unbias_sequence,
     unbias_sequence = unbias_sequence,
     calibration_method = calibration_method,
     correction_algorithm = correction_algorithm,
-    spatialization_method = spatialization_method
+    spatialization_method = ifelse(unbias_sequence == "CA", NULL, spatialization_method)
   )
   
-  # Save processed data
-  fileout <- glue(
-    "{output_dir}/{pollutant}_",
-    "{unbias_sequence}.{calibration_method}.{correction_algorithm}.{spatialization_method}",
-    "_unbiased_scenario.tif")
-  flog.info("Saving processed raster to file: %s", fileout)
-  writeRaster(unbias_result, filename = fileout, overwrite = TRUE)
+  # Define the output file name based on parameters
+  fileout <- if (unbias_sequence == "CA") {
+    glue("{output_dir}/{pollutant}_{unbias_sequence}.{calibration_method}.{correction_algorithm}")
+  } else {
+    glue("{output_dir}/{pollutant}_{unbias_sequence}.{calibration_method}.{correction_algorithm}.{spatialization_method}")
+  }
   
-  flog.info("Completed processing for pollutant: %s", pollutant)
+  # Determine the type of output to save based on the data structure
+  if (inherits(unbias_result, "SpatRaster")) {
+    fileout <- paste0(fileout, "_unbiased_scenario.tif")
+    flog.info("Saving processed raster to file: %s", fileout)
+    writeRaster(unbias_result, filename = fileout, overwrite = TRUE)
+  } else if (is.data.frame(unbias_result)) {
+    fileout <- paste0(fileout, "_unbiased_scenario.csv")
+    flog.info("Saving processed data frame to file: %s", fileout)
+    write.csv(unbias_result, fileout, row.names = FALSE)
+  } else {
+    stop("Unexpected data type for 'unbias_result'. Expected SpatRaster or data.frame.")
+  }
 }
 
-# Function to validate combination
-is_valid_combination <- function(unbias_sequence, calibration_method) {
-  if (unbias_sequence == "SCA" && calibration_method == "Point") {
-    return(FALSE)
-  }
-  if (unbias_sequence %in% c("CSA", "CAS", "CA") && calibration_method != "Point") {
-    return(FALSE)
-  }
-  return(TRUE)
-}
-
-# Main script
+# Main processing loop
 flog.info("Starting data processing...")
 for (pollutant in pollutants) {
   for (unbias_sequence in unbias_sequences) {
     for (calibration_method in calibration_methods) {
       for (correction_algorithm in correction_algorithms) {
-        for (spatialization_method in spatialization_methods) {
+        
+        if (unbias_sequence == "CA") {
+          # Call process_combination only once without iterating over spatialization_methods
           process_combination(
             pollutant = pollutant,
             output_dir = output_dir,
             unbias_sequence = unbias_sequence,
             calibration_method = calibration_method,
-            correction_algorithm = correction_algorithm,
-            spatialization_method = spatialization_method
+            correction_algorithm = correction_algorithm
           )
+        } else {
+          for (spatialization_method in spatialization_methods) {
+            process_combination(
+              pollutant = pollutant,
+              output_dir = output_dir,
+              unbias_sequence = unbias_sequence,
+              calibration_method = calibration_method,
+              correction_algorithm = correction_algorithm,
+              spatialization_method = spatialization_method
+            )
+          }
         }
       }
     }

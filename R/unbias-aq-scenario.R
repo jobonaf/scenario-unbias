@@ -4,11 +4,9 @@ source("R/calibrate-unbias-coefficients.R")
 source("R/apply-unbiasing.R")
 
 # Main process function
-## SPLIT Point INTO PtGlo e PtLoc
-#################
 process_data <- function(observed_data, base_case, scenario, 
                          unbias_sequence       = c("SCA", "CSA", "CAS", "CA"), 
-                         calibration_method    = c("Point", "Grid", "Cell", "Neigh"), 
+                         calibration_method    = c("All", "Each", "Grid", "Cell", "Neigh"), 
                          correction_algorithm  = c("Add", "Mult", "Lin"), 
                          spatialization_method = c("tps", "idw", "ok", "ked", "scm")) {
   
@@ -16,14 +14,23 @@ process_data <- function(observed_data, base_case, scenario,
   unbias_sequence       <- match.arg(unbias_sequence)
   correction_algorithm  <- match.arg(correction_algorithm)
   calibration_method    <- match.arg(calibration_method)
-  spatialization_method <- match.arg(spatialization_method)
+  if (unbias_sequence != "CA") {
+    spatialization_method <- match.arg(spatialization_method)
+  }
   
   # Check calibration method restrictions for each unbias_sequence
-  if (unbias_sequence == "SCA" && calibration_method == "Point") {
-    stop("For sequence 'SCA', calibration method 'Point' is not allowed.")
+  if (unbias_sequence == "SCA" && !calibration_method %in% c("Grid", "Cell", "Neigh")) {
+    stop("For sequence 'SCA', calibration method must be one of 'Grid', 'Cell', or 'Neigh'.")
   }
-  if (unbias_sequence %in% c("CSA", "CAS", "CA") && calibration_method != "Point") {
-    stop("For sequences 'CSA', 'CAS', and 'CA', calibration method must be 'Point'.")
+  if (unbias_sequence %in% c("CAS", "CA") && !calibration_method %in% c("All", "Each")) {
+    stop("For sequences 'CAS', and 'CA', calibration method must be 'All' or 'Each'.")
+  }
+  if (unbias_sequence == "CSA" && calibration_method != "Each") {
+    stop("For sequence 'CSA' calibration method must be 'Each'.")
+  }
+  # Check compatibility between calibration method and correction algorithm
+  if (calibration_method %in% c("Each", "Cell") && !correction_algorithm %in% c("Add", "Mult")) {
+    stop("Calibration methods 'Each' and 'Cell' are only compatible with correction algorithms 'Add' and 'Mult'.")
   }
   
   # Execute based on the chosen unbias_sequence
@@ -36,7 +43,11 @@ process_data <- function(observed_data, base_case, scenario,
       calibration_method = calibration_method, 
       correction_algorithm = correction_algorithm
     )
-    corrected_data <- apply_correction(scenario, calibrated_coefficients, correction_algorithm)  # Apply correction
+    # Apply correction
+    corrected_data <- apply_correction(
+      scenario = scenario, 
+      coefficients = calibrated_coefficients, 
+      correction_algorithm = correction_algorithm)  
     return(corrected_data)
     
   } else if (unbias_sequence == "CSA") {
@@ -48,15 +59,19 @@ process_data <- function(observed_data, base_case, scenario,
       correction_algorithm = correction_algorithm
     )
     spatialized_coefficients <- spatialize(calibrated_coefficients, scenario, spatialization_method)  # Spatialize coefficients
-    corrected_data <- apply_correction(scenario, spatialized_coefficients, correction_algorithm)  # Apply correction
+    # Apply correction
+    corrected_data <- apply_correction(
+      scenario = scenario, 
+      coefficients = spatialized_coefficients, 
+      correction_algorithm = correction_algorithm)  
     return(corrected_data)
     
   } else if (unbias_sequence == "CAS") {
     # Calibrate coefficients (using observed data), apply correction, then spatialize the corrected data
     
     # Extract values from the 'scenario' based on the coordinates in 'observed_data'
-    scenario_values <- terra::extract(scenario, observed_data[, c("x", "y")], xy = TRUE)
-    scenario_sparse <- data.frame(observed_data[, c("x", "y")], value = scenario_values)
+    scenario_values <- terra::extract(scenario, observed_data[, c("x", "y")], xy = FALSE, ID=FALSE)
+    scenario_sparse <- data.frame(observed_data[, c("x", "y")], value = unname(scenario_values))
     
     # Apply correction to the sparse scenario
     calibrated_coefficients <- calibrate(
@@ -65,7 +80,12 @@ process_data <- function(observed_data, base_case, scenario,
       calibration_method = calibration_method, 
       correction_algorithm = correction_algorithm
     )
-    corrected_sparse <- apply_correction(scenario_sparse, calibrated_coefficients, correction_algorithm)  # Apply correction
+
+    # Apply correction
+    corrected_sparse <- apply_correction(
+      scenario = scenario_sparse, 
+      coefficients = calibrated_coefficients, 
+      correction_algorithm = correction_algorithm)  
     
     # Spatialize the corrected sparse data
     spatialized_data <- spatialize(corrected_sparse, scenario, spatialization_method)  # Spatialize corrected data
@@ -79,7 +99,19 @@ process_data <- function(observed_data, base_case, scenario,
       calibration_method = calibration_method, 
       correction_algorithm = correction_algorithm
     )
-    corrected_data <- apply_correction(scenario, calibrated_coefficients, correction_algorithm)  # Apply correction
+
+    # If 'calibrated_coefficients' is a data.frame object,
+    # extract values from scenario before applying correction
+    if (inherits(calibrated_coefficients, "data.frame")) {
+      scenario_sparse <- terra::extract(scenario, calibrated_coefficients[, c("x", "y")], xy = FALSE, ID=FALSE)
+      scenario <- data.frame(calibrated_coefficients[, c("x", "y")], value = unname(scenario_sparse))
+    }
+
+    # Apply correction
+    corrected_data <- apply_correction(
+      scenario = scenario, 
+      coefficients = calibrated_coefficients, 
+      correction_algorithm = correction_algorithm)  
     return(corrected_data)
   }
 }

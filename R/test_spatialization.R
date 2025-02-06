@@ -18,23 +18,23 @@ xy <- xy[valid_idx, ]
 v <- v[valid_idx]
 
 # Thin Plate Spline interpolation
-result_tps <- spatialize(points_data = data.frame(x = xy[, 1], y = xy[, 2], values = v), 
+result_tps <- spatialize(points_data = data.frame(x = xy[, 1], y = xy[, 2], value = v), 
                                grid_data = r, method = "tps")
 plot(result_tps, main = "Thin Plate Spline")
 
 # IDW interpolation
-result_idw <- spatialize(points_data = data.frame(x = xy[, 1], y = xy[, 2], values = v), 
+result_idw <- spatialize(points_data = data.frame(x = xy[, 1], y = xy[, 2], value = v), 
                                grid_data = r, method = "idw", 
                                params = list(idp = 2, nmax = 5))
 plot(result_idw, main = "IDW")
 
 # Ordinary Kriging interpolation
-result_ok <- spatialize(points_data = data.frame(x = xy[, 1], y = xy[, 2], values = v), 
+result_ok <- spatialize(points_data = data.frame(x = xy[, 1], y = xy[, 2], value = v), 
                               grid_data = r, method = "ok",
-                              params = list(psill = NA, model = "Sph", range = 0.1, nugget = 10))
+                              params = list(psill = NA, model = "Sph", range = NA, nugget = NA))
 plot(result_ok, main = "Ordinary Kriging")
 
 # Kriging with External Drift interpolation
-result_ked <- spatialize(points_data = data.frame(x = xy[, 1], y = xy[, 2], values = v), 
+result_ked <- spatialize(points_data = data.frame(x = xy[, 1], y = xy[, 2], value = v), 
                                grid_data = r, method = "ked")
 plot(result_ked, main = "Kriging with External Drift")
