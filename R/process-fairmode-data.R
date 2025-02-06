@@ -60,15 +60,16 @@ is_valid_combination <- function(unbias_sequence, calibration_method, correction
 # Function to process a specific combination of parameters
 process_combination <- function(pollutant, output_dir, unbias_sequence, 
                                 calibration_method, correction_algorithm, 
-                                spatialization_method) {
-  flog.info("Processing pollutant: %s with combination: %s.%s.%s.%s", 
-            pollutant, unbias_sequence, calibration_method, correction_algorithm, spatialization_method)
+                                spatialization_method = NULL) {
+  flog.info("Processing pollutant: %s with combination: %s.%s.%s%s", 
+            pollutant, unbias_sequence, calibration_method, correction_algorithm,
+            ifelse(is.null(spatialization_method), "", paste0(".", spatialization_method)))
   
   # Check if the combination is valid
   if (!is_valid_combination(unbias_sequence, calibration_method, correction_algorithm)) {
-    flog.warn("Invalid combination for pollutant %s: %s.%s.%s.%s", 
+    flog.warn("Invalid combination for pollutant %s: %s.%s.%s%s", 
               pollutant, unbias_sequence, calibration_method, 
-              correction_algorithm, spatialization_method)
+              correction_algorithm, ifelse(is.null(spatialization_method), "", paste0(".", spatialization_method)))
     return(NULL)
   }
   
@@ -85,12 +86,15 @@ process_combination <- function(pollutant, output_dir, unbias_sequence,
     unbias_sequence = unbias_sequence,
     calibration_method = calibration_method,
     correction_algorithm = correction_algorithm,
-    spatialization_method = spatialization_method
+    spatialization_method = ifelse(unbias_sequence == "CA", NULL, spatialization_method)
   )
   
   # Define the output file name based on parameters
-  fileout <- glue(
-    "{output_dir}/{pollutant}_{unbias_sequence}.{calibration_method}.{correction_algorithm}.{spatialization_method}")
+  fileout <- if (unbias_sequence == "CA") {
+    glue("{output_dir}/{pollutant}_{unbias_sequence}.{calibration_method}.{correction_algorithm}")
+  } else {
+    glue("{output_dir}/{pollutant}_{unbias_sequence}.{calibration_method}.{correction_algorithm}.{spatialization_method}")
+  }
   
   # Determine the type of output to save based on the data structure
   if (inherits(unbias_result, "SpatRaster")) {
@@ -112,15 +116,27 @@ for (pollutant in pollutants) {
   for (unbias_sequence in unbias_sequences) {
     for (calibration_method in calibration_methods) {
       for (correction_algorithm in correction_algorithms) {
-        for (spatialization_method in spatialization_methods) {
+        
+        if (unbias_sequence == "CA") {
+          # Call process_combination only once without iterating over spatialization_methods
           process_combination(
             pollutant = pollutant,
             output_dir = output_dir,
             unbias_sequence = unbias_sequence,
             calibration_method = calibration_method,
-            correction_algorithm = correction_algorithm,
-            spatialization_method = spatialization_method
+            correction_algorithm = correction_algorithm
           )
+        } else {
+          for (spatialization_method in spatialization_methods) {
+            process_combination(
+              pollutant = pollutant,
+              output_dir = output_dir,
+              unbias_sequence = unbias_sequence,
+              calibration_method = calibration_method,
+              correction_algorithm = correction_algorithm,
+              spatialization_method = spatialization_method
+            )
+          }
         }
       }
     }
