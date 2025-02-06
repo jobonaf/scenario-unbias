@@ -14,7 +14,9 @@ process_data <- function(observed_data, base_case, scenario,
   unbias_sequence       <- match.arg(unbias_sequence)
   correction_algorithm  <- match.arg(correction_algorithm)
   calibration_method    <- match.arg(calibration_method)
-  spatialization_method <- match.arg(spatialization_method)
+  if (unbias_sequence != "CA") {
+    spatialization_method <- match.arg(spatialization_method)
+  }
   
   # Check calibration method restrictions for each unbias_sequence
   if (unbias_sequence == "SCA" && !calibration_method %in% c("Grid", "Cell", "Neigh")) {
@@ -68,8 +70,8 @@ process_data <- function(observed_data, base_case, scenario,
     # Calibrate coefficients (using observed data), apply correction, then spatialize the corrected data
     
     # Extract values from the 'scenario' based on the coordinates in 'observed_data'
-    scenario_values <- terra::extract(scenario, observed_data[, c("x", "y")], xy = TRUE)
-    scenario_sparse <- data.frame(observed_data[, c("x", "y")], value = scenario_values)
+    scenario_values <- terra::extract(scenario, observed_data[, c("x", "y")], xy = FALSE, ID=FALSE)
+    scenario_sparse <- data.frame(observed_data[, c("x", "y")], value = unname(scenario_values))
     
     # Apply correction to the sparse scenario
     calibrated_coefficients <- calibrate(
@@ -78,9 +80,10 @@ process_data <- function(observed_data, base_case, scenario,
       calibration_method = calibration_method, 
       correction_algorithm = correction_algorithm
     )
+
     # Apply correction
     corrected_sparse <- apply_correction(
-      scenario = scenario, 
+      scenario = scenario_sparse, 
       coefficients = calibrated_coefficients, 
       correction_algorithm = correction_algorithm)  
     
@@ -96,6 +99,14 @@ process_data <- function(observed_data, base_case, scenario,
       calibration_method = calibration_method, 
       correction_algorithm = correction_algorithm
     )
+
+    # If 'calibrated_coefficients' is a data.frame object,
+    # extract values from scenario before applying correction
+    if (inherits(calibrated_coefficients, "data.frame")) {
+      scenario_sparse <- terra::extract(scenario, calibrated_coefficients[, c("x", "y")], xy = FALSE, ID=FALSE)
+      scenario <- data.frame(calibrated_coefficients[, c("x", "y")], value = unname(scenario_sparse))
+    }
+
     # Apply correction
     corrected_data <- apply_correction(
       scenario = scenario, 
