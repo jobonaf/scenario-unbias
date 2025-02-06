@@ -3,6 +3,7 @@ library(terra)
 library(fields)
 library(gstat)
 library(futile.logger)
+library(doParallel)
 
 # Spatialization function (updated)
 spatialize <- function(points_data, grid_data, 
@@ -46,7 +47,8 @@ spatialize <- function(points_data, grid_data,
     gstat_model <- gstat(NULL, "var", var ~ 1, 
                          data = data.frame(points_data, var = points_data$value), 
                          locations = ~x + y, model = fit_variogram)
-    result <- interpolate(grid_data, gstat_model, index = 1)
+    num_cores <- max(1, detectCores() - 1)  # Use all but one core to avoid overloading the system
+    result <- terra::interpolate(grid_data, gstat_model, index = 1, cores = num_cores, cpkgs=c("terra","gstat"))
     
   } else if (method == "ked") {
     # Kriging with External Drift spatialization
@@ -64,7 +66,8 @@ spatialize <- function(points_data, grid_data,
     gstat_model <- gstat(NULL, "var", model_formula, 
                          data = data.frame(points_data, var = points_data$value, drift_values), 
                          locations = ~x + y, model = fit_variogram)
-    result <- interpolate(grid_data, gstat_model, index = 1)
+    num_cores <- max(1, detectCores() - 1)  # Use all but one core to avoid overloading the system
+    result <- terra::interpolate(grid_data, gstat_model, index = 1, cores = num_cores, cpkgs=c("terra","gstat"))
     
   } else {
     stop("Unsupported spatialization method.")
