@@ -1,7 +1,7 @@
 
 
 # Function to create the leaflet map with a layer control widget and a binned color key (quantiles)
-create_leaflet_map <- function(parameter) {
+create_leaflet_map <- function(parameter, type="fairmode", add_reference=FALSE) {
   library(terra)
   library(dplyr)
   library(leaflet)
@@ -12,12 +12,12 @@ create_leaflet_map <- function(parameter) {
     parameter == "O3" ~ "ozone",
     parameter == "PM25" ~ "PM2.5"
   )
-
-    # Read all the data
-  source("/u/arpa/bonafeg/src/scenario-unbias/R/read-fairmode-data.R")
+  
+  # Read all the data
+  source(glue("/u/arpa/bonafeg/src/scenario-unbias/R/read-{type}-data.R"))
   data_list  <- read_data(parameter)
-
-    # Combine values from all sources 
+  
+  # Combine values from all sources 
   all_values <- c(
     values(data_list$base_case),
     values(data_list$scenario),
@@ -27,7 +27,7 @@ create_leaflet_map <- function(parameter) {
   
   # Define a color palette based on quantiles
   bins <- signif(quantile(data_list$observed_data$value, 
-                 probs = seq(0, 1, length.out = 8), na.rm = TRUE), 2)
+                          probs = seq(0, 1, length.out = 8), na.rm = TRUE), 2)
   bins[1] <- min(all_values)
   bins[length(bins)] <- max(all_values)
   color_palette <- colorBin(
@@ -41,25 +41,54 @@ create_leaflet_map <- function(parameter) {
   map <- leaflet() %>%
     addProviderTiles("CartoDB.Positron") %>%
     
-    # Add base case raster layer (as an image overlay)
+    # Add base case raster layer (perturbed)
     addRasterImage(
       data_list$base_case, 
       colors = color_palette, 
       opacity = 0.6, 
       project = TRUE, 
-      group = "Base Case"
+      group = "Base Case (perturbed)"
     ) %>%
     
-    # Add scenario raster layer (as an image overlay)
+    # Add scenario raster layer (perturbed)
     addRasterImage(
       data_list$scenario, 
       colors = color_palette, 
       opacity = 0.6, 
       project = TRUE, 
-      group = "Scenario"
-    ) %>%
-    
-    # Add observed data points as circles, colored by value
+      group = "Scenario (perturbed)"
+    )
+  
+  if(add_reference) {
+    # Add base case raster layer (reference)
+    map <- map %>%
+      addRasterImage(
+        data_list$base_case_reference, 
+        colors = color_palette, 
+        opacity = 0.6, 
+        project = TRUE, 
+        group = "Base Case (reference)"
+      ) %>%
+      
+      # Add scenario raster layer (reference)
+      addRasterImage(
+        data_list$scenario_reference, 
+        colors = color_palette, 
+        opacity = 0.6, 
+        project = TRUE, 
+        group = "Scenario (reference)"
+      )
+  }
+  
+  if(add_reference) {
+    baseGroups = c("Base Case (perturbed)", "Scenario (perturbed)",
+                   "Base Case (reference)", "Scenario (reference)")
+  } else {
+    baseGroups = c("Base Case (perturbed)", "Scenario (perturbed)")
+  }
+  
+  # Add observed data points as circles, colored by value
+  map <- map %>%
     addCircleMarkers(
       data = data_list$observed_data, 
       lat = ~y, 
@@ -70,14 +99,14 @@ create_leaflet_map <- function(parameter) {
       color = "black",    # Border color
       fillColor = ~color_palette(value), 
       fillOpacity = 0.8, 
-      group = "Observed Data", 
+      group = "Observed Data (extracted from reference base case)", 
       popup = ~glue("{parameter_description}: {round(value, 1)}")
     ) %>%
     
     # Add Layers Control to toggle between base case, scenario, and observed data
     addLayersControl(
       overlayGroups = c("Observed Data"), 
-      baseGroups = c("Base Case", "Scenario"),
+      baseGroups = baseGroups,
       options = layersControlOptions(collapsed = FALSE)
     ) %>%
     
@@ -96,10 +125,10 @@ create_leaflet_map <- function(parameter) {
 
 # Example
 if(FALSE) {
-  map <- create_leaflet_map("NO2")
+  map <- create_leaflet_map("NO2", "italian", add_reference=TRUE)
   map
-  map <- create_leaflet_map("PM25")
+  map <- create_leaflet_map("PM25", "italian", add_reference=TRUE)
   map
-  map <- create_leaflet_map("O3")
+  map <- create_leaflet_map("O3", "italian", add_reference=TRUE)
   map
 }
