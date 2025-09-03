@@ -15,7 +15,9 @@ option_list <- list(
   make_option(c("-s", "--spatialization_methods"), type = "character", default = "tps,idw,ok,ked",
               help = "Comma-separated list of spatialization methods [default: %default]"),
   make_option(c("-t", "--unbias_target"), type = "character", default = "scenario",
-              help = "Target for unbiasing: 'scenario' or 'base_case' [default: %default]")
+              help = "Target for unbiasing: 'scenario' or 'base_case' [default: %default]"),
+  make_option(c("-e", "--exercise"), type = "character", default = "fairmode",
+              help = "Exercise type: 'fairmode' or 'italian' [default: %default]")
 )
 
 # Parse command-line arguments
@@ -29,6 +31,12 @@ calibration_methods <- strsplit(opt$calibration_methods, ",")[[1]]
 correction_algorithms <- strsplit(opt$correction_algorithms, ",")[[1]]
 spatialization_methods <- strsplit(opt$spatialization_methods, ",")[[1]]
 unbias_target <- opt$unbias_target
+exercise <- opt$exercise
+
+# Validate exercise parameter
+if (!exercise %in% c("fairmode", "italian")) {
+  stop("Invalid exercise type. Must be either 'fairmode' or 'italian'")
+}
 
 # Load necessary libraries
 library(dplyr)
@@ -36,8 +44,8 @@ library(terra)
 library(glue)
 library(futile.logger)
 
-# Load external scripts containing necessary functions
-source("R/read-fairmode-data.R")
+# Load the appropriate data reading script based on exercise type
+source(glue("R/read-{exercise}-data.R"))
 source("R/unbias-aq-scenario.R")
 
 # Create output directory if it does not exist
