@@ -37,6 +37,27 @@ calibrate <- function(obs, mod,
     mod_values <- mod
   }
   
+  # Check NAs
+  if (inherits(obs_values, "SpatRaster")) {
+    obs_vec <- terra::values(obs_values, mat = FALSE)
+  } else {
+    obs_vec <- obs_values
+  }
+  if (inherits(mod_values, "SpatRaster")) {
+    mod_vec <- terra::values(mod_values, mat = FALSE)
+  } else {
+    mod_vec <- mod_values
+  }
+  if (length(which(!is.na(obs_vec))) == 0) {
+    stop("No valid data in obs")
+  }
+  if (length(which(!is.na(mod_vec))) == 0) {
+    stop("No valid data in mod")
+  }
+  if (length(which(!is.na(obs_vec) & !is.na(mod_vec))) == 0) {
+    stop("No valid data in obs-mod combination")
+  }
+  
   # Calculate correction coefficients
   if (calibration_method %in% c("All", "Grid")) {
     if (correction_algorithm == "Add") {
