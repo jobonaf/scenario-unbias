@@ -14,24 +14,28 @@ This initiative aims to evaluate the performance of different correction techniq
 
 ## Code Overview
 
-Ecco la tabella aggiornata con tutti i file:
-
-| Script | Description |
-|--------|-------------|
-| `unbias-aq-scenario.R` | Core function for unbiasing AQ scenarios. |
-| `spatialize-points-to-grid.R` | Converts sparse point data (or coefficients) into a gridded format. |
-| `test_spatialization.R` | Tests and visualizes the spatialization results. |
-| `calibrate-unbias-coefficients.R` | Calibrates correction coefficients by comparing base case vs observed data. |
-| `apply-unbiasing.R` | Applies the correction coefficients to an AQ scenario. |
-| `read-fairmode-data.R` | Reads the dataset for the FAIRMODE WG5 exercise. |
-| `read-italian-data.R` | Reads the dataset for the Italian exercise. |
-| `map-fairmode-data.R` | Visualizes FAIRMODE data on maps. |
-| `dashboard-fairmode-data.Rmd` | Displays interactive maps of FAIRMODE data in a dashboard format. |
-| `dashboard-italian-data.Rmd` | Displays interactive maps of the Italian exercise data in a dashboard format. |
-| `process-fairmode-data.R` | Reads, processes, and applies unbiasing methods to FAIRMODE data. |
-| `compare-rasters.R` | Compares two raster scenarios. |
-| `scenario_boxplot.R` | Summarizes the output with boxplots. |
-| `tiff2netcdf.R` | Converts the output from GeoTIFF to NetCDF format. |
+| Group | Script | Description |
+| :--- | :--- | :--- |
+| **Data Ingestion** | `read-fairmode-data.R` | Reads and preprocesses the dataset for the FAIRMODE WG5 exercise. |
+| | `read-italian-data.R` | Reads and preprocesses the dataset for the Italian case study. |
+| | `read_netcdf_as_raster.R` | Imports a NetCDF file and converts it to a SpatRaster object. |
+| **Core Unbiasing** | `unbias-aq-scenario.R` | Core algorithm for unbiasing air quality concentration scenarios. |
+| | `spatialize-points-to-grid.R` | Spatializes sparse point data (or correction coefficients) to a continuous grid. |
+| | `calibrate-unbias-coefficients.R` | Calibrates unbiasing coefficients by comparing a base scenario to observed data. |
+| | `apply-unbiasing.R` | Applies the pre-calibrated correction coefficients to a target scenario. |
+| | `process-fairmode-data.R` | End-to-end workflow: reads, processes, and applies unbiasing methods to the FAIRMODE data. |
+| **Visualization** | `map-fairmode-data.R` | Generates static maps of the FAIRMODE data. |
+| | `dashboard-fairmode-data.Rmd` | Creates an interactive dashboard for visualizing FAIRMODE data on maps. |
+| | `dashboard-italian-data.Rmd` | Creates an interactive dashboard for visualizing the Italian case study data. |
+| **Evaluation & Analysis** | `scenario_boxplot.R` | Summarizes and compares unbiasing output results using boxplots. |
+| | `clustering_output.R` | Performs cluster analysis on the model output data. |
+| | `distance_scenarios.R` | Calculates the Jaccard distance matrix between scenarios for clustering. |
+| | `describe_clusters.R` | Post-processing and statistical description of identified clusters. |
+| | `model_verification.R` | Verifies unbiasing performance by comparison against a gridded reference field. Also suitable for general AQ model evaluation. |
+| **Utilities** | `test_spatialization.R` | Tests and visualizes the results of the spatialization procedure. |
+| | `tiff2netcdf.R` | Converts model output from GeoTIFF to NetCDF format. |
+| | `compare-rasters.R` | Compares two raster-based scenarios pixel-by-pixel. |
+| | `identify_homogeneous_zones.R` | Identifies homogeneous zones based on spatial patterns of annual mean concentrations. |
 
 ## FAIRMODE WG5 Exercise Data Structure
 

@@ -9,7 +9,8 @@ library(ncdf4)
 # Modified for the new file structure with different naming conventions
 read_data <- function(parameter,
                       data_path = "data/esercizio-dominio-italiano",
-                      preproc_obs = c("closest_to_center", "move_to_center")) {
+                      preproc_obs = c("exclude_industrial", "exclude_traffic", 
+                                      "closest_to_center")) {
   
   # Define file name components for each type of data
   # Note: The new structure uses different naming patterns
@@ -28,36 +29,7 @@ read_data <- function(parameter,
   observed_data_file <- glue("{data_path}/BaseCase_Reference_Points/{obs_file_suffix}")
   
   # Function to read a NetCDF file as SpatRaster, adjusting extent if needed
-  read_nc <- function(file) {
-    # Open the NetCDF file
-    nc_data <- nc_open(file)
-    
-    # Extract variable data (assuming it's the first variable)
-    var_data <- ncvar_get(nc_data, nc_data$var[[1]]$name)
-    
-    # Get the latitude and longitude coordinates
-    lon <- ncvar_get(nc_data, "lon")  # Longitude
-    lat <- ncvar_get(nc_data, "lat")  # Latitude
-    
-    # Compute resolution (assuming uniform grid spacing)
-    res_x <- mean(diff(lon))  # Resolution in X direction
-    res_y <- mean(diff(lat))  # Resolution in Y direction
-    
-    # Compute new extent by shifting from center-based to corner-based convention
-    xmin_new <- min(lon) - res_x / 2
-    xmax_new <- max(lon) + res_x / 2
-    ymin_new <- min(lat) - res_y / 2
-    ymax_new <- max(lat) + res_y / 2
-    
-    # Convert data to SpatRaster (flipping Y direction if necessary)
-    raster_data <- rast(t(var_data)[ncol(var_data):1,], crs="EPSG:4326")
-    ext(raster_data) <- c(xmin_new, xmax_new, ymin_new, ymax_new)
-    
-    # Close the NetCDF file
-    nc_close(nc_data)
-    
-    return(raster_data)
-  }
+  source("R/read_netcdf_as_raster.R")
   
   # Read the gridded data
   base_case <- read_nc(base_case_perturbed)
@@ -66,7 +38,13 @@ read_data <- function(parameter,
   scenario_reference <- read_nc(scenario_reference)
   
   # Read the observed data and rename columns to x, y, and value
-  observed_data <- read_csv(observed_data_file, show_col_types = FALSE) %>%
+  observed_data <- read_csv(observed_data_file, show_col_types = FALSE) 
+  
+  # Exclude stations by type
+  if("exclude_industrial" %in% preproc_obs) observed_data %>% filter(AirQualityStationType != "industrial")
+  if("exclude_traffic" %in% preproc_obs)    observed_data %>% filter(AirQualityStationType != "traffic")
+  if("exclude_background" %in% preproc_obs) observed_data %>% filter(AirQualityStationType != "background")
+  observed_data <- observed_data %>%
     transmute(x = Longitude, y = Latitude, value = Value_sampled)  
   
   # Keep only one point for each cell, the closest to the cell center
