@@ -227,8 +227,7 @@ create_selection_plot <- function(data, phase_name, output_dir, pollutant, nrows
   p <- ggplot(plot_data, aes(x = value, y = model)) +
     geom_point(size = 2, color = "steelblue")  +
     facet_wrap(~ metric, scales = facet_scales, nrow = nrows) +
-    labs(title = glue("Model Selection - {phase_name}"),
-         subtitle = glue("Pollutant: {poll_ext}"),
+    labs(title = glue("Pollutant: {poll_ext}"),
          x = "Metric Value", 
          y = "Models") +
     theme_bw() +
@@ -391,7 +390,7 @@ flog.info(glue("Selected {nrow(selected_phase2)} models from Phase 2 (better tha
 
 # Create selection plot
 create_selection_plot(selected_phase1, "Phase2_PercentileScreening", output_dir, pollutant,
-                      metrics_to_plot = c("P95", "P75", "P50", "IOA"))
+                      metrics_to_plot = c("P95", "P75", "P50"))
 
 # =============================================================================
 # Phase 3: Error Distribution Analysis (Boxplots by Zone/Region)
