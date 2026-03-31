@@ -23,7 +23,7 @@ read_data <- function(parameter,
   scenario_gridded   <- glue("{data_path}/Scenario_Perturbed_Gridded/SCEN_PERT_{mod_code}_YEARLY.nc")
   observed_data_file <- glue("{data_path}/BaseCase_Reference_Points/yearly_SURF_{obs_code}.csv")
   
-  # Function to read a NetCDF file as SpatRaster
+  # Function to read a NetCDF file as SpatRaster, adjusting extent if needed
   read_nc <- function(file) {
     # Open the NetCDF file
     nc_data <- nc_open(file)
@@ -31,13 +31,23 @@ read_data <- function(parameter,
     # Extract variable data (assuming it's the first variable)
     var_data <- ncvar_get(nc_data, nc_data$var[[1]]$name)
     
-    # Get the dimensions of the data
+    # Get the latitude and longitude coordinates
     lon <- ncvar_get(nc_data, "lon")  # Longitude
     lat <- ncvar_get(nc_data, "lat")  # Latitude
     
-    # Convert to SpatRaster
+    # Compute resolution (assuming uniform grid spacing)
+    res_x <- mean(diff(lon))  # Resolution in X direction
+    res_y <- mean(diff(lat))  # Resolution in Y direction
+    
+    # Compute new extent by shifting from center-based to corner-based convention
+    xmin_new <- min(lon) - res_x / 2
+    xmax_new <- max(lon) + res_x / 2
+    ymin_new <- min(lat) - res_y / 2
+    ymax_new <- max(lat) + res_y / 2
+    
+    # Convert data to SpatRaster (flipping Y direction if necessary)
     raster_data <- rast(t(var_data)[ncol(var_data):1,], crs="EPSG:4326")
-    ext(raster_data) <- c(min(lon), max(lon), min(lat), max(lat))
+    ext(raster_data) <- c(xmin_new, xmax_new, ymin_new, ymax_new)
     
     # Close the NetCDF file
     nc_close(nc_data)
@@ -50,7 +60,7 @@ read_data <- function(parameter,
   scenario <- read_nc(scenario_gridded)
   
   # Read the observed data and rename columns to x, y, and value
-  observed_data <- read_csv(observed_data_file) %>%
+  observed_data <- read_csv(observed_data_file, show_col_types = FALSE) %>%
     rename(x = 1, y = 2, value = 3)  # Assuming x, y, value are in the first three columns
   
   # Return the data as a list

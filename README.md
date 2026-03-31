@@ -2,29 +2,42 @@
 
 The repository contains code designed to test different approaches for reducing bias in air quality (AQ) scenarios, specifically within the context of the FAIRMODE WG5 exercise. While the primary focus is on this particular exercise, the methods and tools provided can also be useful for unbiasing AQ scenarios more generally, even outside of the FAIRMODE framework.
 
-For an overview of the methodology, refer to the [Unbiasing Air Quality Scenarios Documentation](https://github.com/jobonaf/scenario-unbias/blob/main/docs/unbiasing-aq-scenarios.md).
-
 ## FAIRMODE WG5 Exercise
 
 The FAIRMODE WG5 bias projection exercise aims to benchmark methodologies for removing bias from air quality model simulations, particularly in future policy scenarios. It focuses on deriving bias correction fields and projecting biases into future scenarios using synthetic datasets. Participants apply their preferred methodologies to post-process provided data and benchmark their results against known synthetic truths. The exercise includes annual data for PM2.5, NO2, and O3 in gridded (NetCDF) and point (CSV) formats for both reference and future projections.
 
+## Italian National Exercise
+
+A complementary national exercise has been established to test and benchmark unbias methodologies specifically for Italian air quality planning. Mirroring the structure of the FAIRMODE WG5 exercise, it provides a synthetic dataset focused on the Italian domain, featuring annual data for PM10, PM2.5, NO₂, and O₃.
+
+This initiative aims to evaluate the performance of different correction techniques within the complex orography and diverse pollution climates characteristic of Italy. The data structure and formats (NetCDF for gridded model data, CSV for point observations) are identical to the FAIRMODE exercise, ensuring methodological consistency and allowing for direct comparison of results between the European and national contexts. The provided tools and scripts in this repository are fully compatible for processing this additional dataset.
+
 ## Code Overview
 
-| Script | Description |
-|--------|------------|
-| `prepare-aq-obs-data.R` | Prepares air quality observation data for testing. |
-| `check-aq-raster.R` | Checks the prepared AQ data and ensures consistency. |
-| `unbias-aq-scenario.R` | Core function for unbiasing AQ scenarios. |
-| `spatialize-points-to-grid.R` | Converts sparse point data (or coefficients) into a gridded format. |
-| `test_spatialization.R` | Tests and visualizes the spatialization results. |
-| `calibrate-unbias-coefficient.R` | Calibrates correction coefficients by comparing base case vs observed data. |
-| `apply-unbiasing.R` | Applies the correction coefficients to an AQ scenario. |
-| `read-fairmode-data.R` | Reads the dataset for the FAIRMODE WG5 exercise. |
-| `map-fairmode-data.R` | Visualizes FAIRMODE data on maps. |
-| `dashboard-fairmode-data.Rmd` | Displays interactive maps of FAIRMODE data in a dashboard format. |
-| `process-fairmode-data.R` | Reads, processes, and applies unbiasing methods to FAIRMODE data. |
+| Group | Script | Description |
+| :--- | :--- | :--- |
+| **Data Ingestion** | `read-fairmode-data.R` | Reads and preprocesses the dataset for the FAIRMODE WG5 exercise. |
+| | `read-italian-data.R` | Reads and preprocesses the dataset for the Italian case study. |
+| | `read_netcdf_as_raster.R` | Imports a NetCDF file and converts it to a SpatRaster object. |
+| **Core Unbiasing** | `unbias-aq-scenario.R` | Core algorithm for unbiasing air quality concentration scenarios. |
+| | `spatialize-points-to-grid.R` | Spatializes sparse point data (or correction coefficients) to a continuous grid. |
+| | `calibrate-unbias-coefficients.R` | Calibrates unbiasing coefficients by comparing a base scenario to observed data. |
+| | `apply-unbiasing.R` | Applies the pre-calibrated correction coefficients to a target scenario. |
+| | `process-fairmode-data.R` | End-to-end workflow: reads, processes, and applies unbiasing methods to the FAIRMODE data. |
+| **Visualization** | `map-fairmode-data.R` | Generates static maps of the FAIRMODE data. |
+| | `dashboard-fairmode-data.Rmd` | Creates an interactive dashboard for visualizing FAIRMODE data on maps. |
+| | `dashboard-italian-data.Rmd` | Creates an interactive dashboard for visualizing the Italian case study data. |
+| **Evaluation & Analysis** | `scenario_boxplot.R` | Summarizes and compares unbiasing output results using boxplots. |
+| | `clustering_output.R` | Performs cluster analysis on the model output data. |
+| | `distance_scenarios.R` | Calculates the Jaccard distance matrix between scenarios for clustering. |
+| | `describe_clusters.R` | Post-processing and statistical description of identified clusters. |
+| | `model_verification.R` | Verifies unbiasing performance by comparison against a gridded reference field. Also suitable for general AQ model evaluation. |
+| **Utilities** | `test_spatialization.R` | Tests and visualizes the results of the spatialization procedure. |
+| | `tiff2netcdf.R` | Converts model output from GeoTIFF to NetCDF format. |
+| | `compare-rasters.R` | Compares two raster-based scenarios pixel-by-pixel. |
+| | `identify_homogeneous_zones.R` | Identifies homogeneous zones based on spatial patterns of annual mean concentrations. |
 
-## Data Structure
+## FAIRMODE WG5 Exercise Data Structure
 
 The dataset supports the FAIRMODE WG5 exercise for AQ scenario unbiasing. It contains **annual** data for NO₂, O₃, and PM₂.₅ (humidity-adjusted at 50%) in gridded and point formats.
 
@@ -95,8 +108,9 @@ We welcome contributions to this repository! To ensure a smooth collaboration, p
    ```
 3. **Create a New Branch from `devel`:**
    ```bash
-   git checkout -b my-feature-branch origin/devel
+   git checkout -b <new_branch_name> origin/devel
    ```
+   *Tip*: Use the naming convention `devel-<feature_name>-YYYYMMDD` for your development branches.
 4. **Develop Your Changes** and test them locally.
 5. **Commit Your Changes:**
    ```bash
@@ -105,7 +119,7 @@ We welcome contributions to this repository! To ensure a smooth collaboration, p
    ```
 6. **Push to Your Branch:**
    ```bash
-   git push origin my-feature-branch
+   git push origin devel-<cosa_fa>-YYYYMMDD
    ```
 7. **Open a Pull Request** from your branch to `devel` on GitHub.
 8. **Code Review and Merge:** The maintainers will review your pull request and merge it if everything is in order.
