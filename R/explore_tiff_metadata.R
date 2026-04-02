@@ -42,7 +42,7 @@ get_tiff_metadata <- function(file_list) {
 }
 
 # Example usage:
-file_list <- Sys.glob("data/processed/*.tif")
+file_list <- Sys.glob("data/processed_phase2/*.tif")
 metadata_table <- get_tiff_metadata(file_list)
 rownames(metadata_table) <- NULL
 View(metadata_table)
