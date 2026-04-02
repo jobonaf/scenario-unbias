@@ -69,6 +69,18 @@ read_data <- function(parameter,
   observed_data <- read_csv(observed_data_file, show_col_types = FALSE) %>%
     rename(x = Longitude, y = Latitude, value = Average)
   
+  # Get model bounding box (use base_case grid)
+  bb <- ext(base_case)
+  
+  # Filter observed stations within bounding box
+  observed_data <- observed_data %>%
+    filter(
+      x >= bb$xmin,
+      x <= bb$xmax,
+      y >= bb$ymin,
+      y <= bb$ymax
+    )
+  
   # Load scenario gridded data based on scenario_year
   if (scenario_year == "2015") {
     # If scenario_year is 2015, use the base case gridded data as scenario
