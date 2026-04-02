@@ -3,13 +3,40 @@ library(terra)
 library(fields)
 library(gstat)
 library(futile.logger)
-library(doParallel)
+library(parallel)
 library(rlang)
 library(glue)
 
-# Configura logging
+# Set logging
 flog.threshold(INFO)
 flog.appender(appender.console())
+
+# Safely detect available cores
+safe_cores <- function(requested = NULL) {
+  cores <- tryCatch({
+    parallel::detectCores()
+  }, error = function(e) NA_integer_)
+  
+  if (is.na(cores) || cores < 2) {
+    flog.warn("Parallelization not available, using single core")
+    return(1)
+  }
+  
+  cores <- max(1, cores - 1)
+  
+  ok <- tryCatch({
+    cl <- parallel::makeCluster(1)
+    parallel::stopCluster(cl)
+    TRUE
+  }, error = function(e) FALSE)
+  
+  if (!ok) {
+    flog.warn("Cluster creation failed, disabling parallelization")
+    return(1)
+  }
+  
+  return(cores)
+}
 
 # Spatialization function (updated with detailed logging)
 spatialize <- function(points_data, grid_data, 
@@ -126,7 +153,7 @@ spatialize <- function(points_data, grid_data,
     
     # Perform interpolation
     flog.debug("Starting kriging interpolation")
-    num_cores <- max(1, detectCores() - 1)
+    num_cores <- safe_cores()
     flog.debug(glue("Using {num_cores} cores for interpolation"))
     
     result <- tryCatch({
@@ -191,7 +218,7 @@ spatialize <- function(points_data, grid_data,
                          data = ked_data, 
                          locations = ~x + y, model = fit_variogram)
     
-    num_cores <- max(1, detectCores() - 1)
+    num_cores <- safe_cores()
     result <- tryCatch({
       terra::interpolate(grid_data, gstat_model, index = 1, cores = num_cores, 
                          cpkgs = c("terra", "gstat"))
