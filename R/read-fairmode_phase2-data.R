@@ -72,9 +72,9 @@ read_data <- function(parameter,
     rename(x = Longitude, y = Latitude, value = Average)
   
   # Exclude stations by type
-  if("exclude_industrial" %in% preproc_obs) observed_data %>% filter(Type != "Industrial")
-  if("exclude_traffic" %in% preproc_obs)    observed_data %>% filter(Type != "Traffic")
-  if("exclude_background" %in% preproc_obs) observed_data %>% filter(Type != "Background")
+  if("exclude_industrial" %in% preproc_obs) observed_data <- observed_data %>% filter(Type != "Industrial")
+  if("exclude_traffic" %in% preproc_obs)    observed_data <- observed_data %>% filter(Type != "Traffic")
+  if("exclude_background" %in% preproc_obs) observed_data <- observed_data %>% filter(Type != "Background")
   
   # Keep only one point for each cell, the closest to the cell center
   if("closest_to_center" %in% preproc_obs) {

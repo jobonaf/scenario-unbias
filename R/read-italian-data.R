@@ -41,9 +41,9 @@ read_data <- function(parameter,
   observed_data <- read_csv(observed_data_file, show_col_types = FALSE) 
   
   # Exclude stations by type
-  if("exclude_industrial" %in% preproc_obs) observed_data %>% filter(AirQualityStationType != "industrial")
-  if("exclude_traffic" %in% preproc_obs)    observed_data %>% filter(AirQualityStationType != "traffic")
-  if("exclude_background" %in% preproc_obs) observed_data %>% filter(AirQualityStationType != "background")
+  if("exclude_industrial" %in% preproc_obs) observed_data <- observed_data %>% filter(AirQualityStationType != "industrial")
+  if("exclude_traffic" %in% preproc_obs)    observed_data <- observed_data %>% filter(AirQualityStationType != "traffic")
+  if("exclude_background" %in% preproc_obs) observed_data <- observed_data %>% filter(AirQualityStationType != "background")
   observed_data <- observed_data %>%
     transmute(x = Longitude, y = Latitude, value = Value_sampled)  
   
