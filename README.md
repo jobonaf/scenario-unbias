@@ -85,6 +85,7 @@ cd scenario-unbias
 | `read-fairmode-data.R` | Reads and preprocesses the dataset for the FAIRMODE WG5 exercise. |
 | `read-italian-data.R` | Reads and preprocesses the dataset for the Italian case study. |
 | `read_netcdf_as_raster.R` | Imports a NetCDF file and converts it to a Raster* object. |
+| `read-fairmode_phase2-data.R` | Reads gridded (.nc) and observed (.csv) data for the FAIRMODE WG5 Phase 2 exercise. |
 
 ### Core Unbiasing Methods (Based on the BCM Classification Framework)
 
@@ -111,6 +112,12 @@ cd scenario-unbias
 | `distance_scenarios.R` | Calculates the Jaccard distance matrix between scenarios for clustering. |
 | `describe_clusters.R` | Post-processing and statistical description of identified clusters. |
 | `model_verification.R` | Verifies unbiasing performance by comparison against a gridded reference field. Also suitable for general AQ model evaluation. |
+| `model_verification_european.R` | Calculates air quality model skill scores for the European domain. |
+| `plot_skill_scores.R` | Creates comparison plots of model skill scores from CSV files. |
+| `prepare_upset_data.R` | Prepares BCM dataset for UpSet analysis (combining criteria and skill scores). |
+| `upset_scores.R` | Creates UpSet plots for BCM selection analysis. |
+| `compare_clustering.R` | Compares two different clustering approaches for air quality scenarios. |
+| `generate_cluster_jaccard_maps.R` | Generates Jaccard cluster maps using precomputed CSV clusters. |
 
 ### Utilities
 | Script | Description |
@@ -119,6 +126,9 @@ cd scenario-unbias
 | `tiff2netcdf.R` | Converts model output from GeoTIFF to NetCDF format. |
 | `compare-rasters.R` | Compares two raster-based scenarios pixel-by-pixel. |
 | `identify_homogeneous_zones.R` | Identifies homogeneous zones based on spatial patterns of annual mean concentrations. |
+| `explore_tiff_data.R` | Explores GeoTIFF data produced by the pipeline and extracts global raster statistics. |
+| `explore_tiff_metadata.R` | Extracts metadata from GeoTIFF files. |
+| `topography_from_nc.R` | Loads topography data from a NetCDF file. |
 
 ## FAIRMODE WG5 Exercise Data Structure
 
