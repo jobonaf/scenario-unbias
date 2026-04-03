@@ -9,7 +9,9 @@ library(futile.logger)
 # Function to read gridded (.nc) and observed (.csv) data for a specific parameter and scenario
 read_data <- function(parameter,
                       scenario_year = NULL,  # Can be "2015", "2022", "2023", or "2024"
-                      data_path = "/u/arpa/bonafeg/src/scenario-unbias/data/fairmode-wg5-exercise-202602/YEARLY") {
+                      data_path = "/u/arpa/bonafeg/src/scenario-unbias/data/fairmode-wg5-exercise-202602/YEARLY",
+                      preproc_obs = c("exclude_industrial", "exclude_traffic", 
+                                      "closest_to_center")) {
   
   # Helper function to read NetCDF file as SpatRaster
   read_nc <- function(file) {
@@ -68,6 +70,22 @@ read_data <- function(parameter,
   observed_data_file <- glue("{data_path}/BaseCase_2015_Points/yearly_{obs_code}_2015.csv")
   observed_data <- read_csv(observed_data_file, show_col_types = FALSE) %>%
     rename(x = Longitude, y = Latitude, value = Average)
+  
+  # Exclude stations by type
+  if("exclude_industrial" %in% preproc_obs) observed_data %>% filter(Type != "Industrial")
+  if("exclude_traffic" %in% preproc_obs)    observed_data %>% filter(Type != "Traffic")
+  if("exclude_background" %in% preproc_obs) observed_data %>% filter(Type != "Background")
+  
+  # Keep only one point for each cell, the closest to the cell center
+  if("closest_to_center" %in% preproc_obs) {
+    observed_data <- observed_data %>%
+      mutate(cell = cellFromXY(base_case, cbind(x, y))) %>%
+      group_by(cell) %>%
+      slice_min(order_by = sqrt((x - xyFromCell(base_case, cell)[,1])^2 +
+                                  (y - xyFromCell(base_case, cell)[,2])^2)) %>%
+      ungroup() %>%
+      select(-cell)
+  }
   
   # Get model bounding box (use base_case grid)
   bb <- ext(base_case)
