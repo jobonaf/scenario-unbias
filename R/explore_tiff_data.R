@@ -1,4 +1,4 @@
-# make_boxplots.R
+# explore_tiff_data.R
 #
 # Reads all GeoTIFF files produced by the scenario-unbias pipeline
 # and extracts global raster statistics.
@@ -6,41 +6,122 @@
 
 library(terra)
 library(dplyr)
-library(stringr)
 library(glue)
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-INPUT_DIR  <- "data/processed_phase2"
-OUTPUT_CSV <- "output/fairmode_phase2/boxplots_pollutant_year_stats.csv"
+INPUT_DIR  <- "data/processed_italian/"
+OUTPUT_CSV <- "output/italian_exercise/output_stats.csv"
+
+# ── Filename schemas ──────────────────────────────────────────────────────────
+#
+# Each schema is a named list with:
+#   name    : human-readable label (used in warnings)
+#   pattern : regex with named capture groups
+#   defaults: named list of fixed values for fields absent from the pattern
+#
+# Named capture groups map directly to output columns.
+# Every schema must produce (or default) all of:
+#   pollutant, unbias_sequence, calibration_method, correction_algorithm,
+#   spatialization_method, scenario_year, run_type
+#
+# Schemas are tried in order; the first match wins.
+
+FILENAME_SCHEMAS <- list(
+  
+  # Schema 1 — with year
+  # e.g. NO2_CA.All.Add.IDW_unbiased_scenario_2030.tif
+  #      NO2_CA.All.Add_unbiased_basecase_2030.tif
+  list(
+    name    = "with_year",
+    pattern = paste0(
+      "^(?<pollutant>[^_]+)",
+      "_(?<unbias_sequence>[A-Z]+)",
+      "\\.(?<calibration_method>[^\\.]+)",
+      "\\.(?<correction_algorithm>[^\\.]+)",
+      "(?:\\.(?<spatialization_method>[^_]+))?",
+      "_unbiased_(?<run_type>scenario|basecase)",
+      "_(?<scenario_year>\\d{4})$"
+    ),
+    defaults = list()
+  ),
+  
+  # Schema 2 — without year
+  # e.g. NO2_CA.All.Add.IDW_unbiased_scenario.tif
+  #      NO2_CA.All.Add_unbiased_basecase.tif
+  list(
+    name    = "without_year",
+    pattern = paste0(
+      "^(?<pollutant>[^_]+)",
+      "_(?<unbias_sequence>[A-Z]+)",
+      "\\.(?<calibration_method>[^\\.]+)",
+      "\\.(?<correction_algorithm>[^\\.]+)",
+      "(?:\\.(?<spatialization_method>[^_]+))?",
+      "_unbiased_(?<run_type>scenario|basecase)$"
+    ),
+    defaults = list(scenario_year = NA_integer_)
+  )
+  
+)
 
 # ── Filename parser ───────────────────────────────────────────────────────────
+
+# All output columns, in canonical order.
+CANONICAL_FIELDS <- c(
+  "path", "filename",
+  "pollutant", "unbias_sequence", "calibration_method",
+  "correction_algorithm", "spatialization_method",
+  "scenario_year", "run_type"
+)
 
 parse_tif_filename <- function(path) {
   fname <- basename(path)
   stem  <- sub("\\.tif$", "", fname)
   
-  m <- str_match(
-    stem,
-    "^([^_]+)_([A-Z]+)\\.([^\\.]+)\\.([^\\.]+)(?:\\.([^_]+))?_unbiased_scenario_(\\d{4})$"
-  )
-  
-  if (is.na(m[1, 1])) {
-    warning("Unrecognised filename format: ", fname)
-    return(NULL)
+  for (schema in FILENAME_SCHEMAS) {
+    rx <- regexpr(schema$pattern, stem, perl = TRUE)
+    if (rx == -1L) next                          # no match, try next schema
+    
+    starts  <- attr(rx, "capture.start")
+    lengths <- attr(rx, "capture.length")
+    cnames  <- attr(rx, "capture.names")
+    
+    # Extract each named group; optional groups that didn't participate → NA
+    groups <- setNames(
+      lapply(seq_along(cnames), function(i) {
+        if (starts[i] == -1L) NA_character_
+        else substr(stem, starts[i], starts[i] + lengths[i] - 1L)
+      }),
+      cnames
+    )
+    groups <- groups[nzchar(cnames)]             # drop any unnamed groups
+    
+    # Merge with schema defaults (fill fields absent from the pattern)
+    row <- c(groups, schema$defaults[!names(schema$defaults) %in% names(groups)])
+    
+    # Type coercions
+    row$scenario_year <-
+      if (!is.null(row$scenario_year) && !is.na(row$scenario_year))
+        as.integer(row$scenario_year)
+    else NA_integer_
+    
+    # Empty string from a non-participating optional group → NA
+    if (is.null(row$spatialization_method) ||
+        identical(row$spatialization_method, ""))
+      row$spatialization_method <- NA_character_
+    
+    row$path     <- path
+    row$filename <- fname
+    
+    # Return in canonical column order; pad any still-missing columns
+    out <- row[intersect(CANONICAL_FIELDS, names(row))]
+    for (col in setdiff(CANONICAL_FIELDS, names(out))) out[[col]] <- NA_character_
+    
+    return(as.data.frame(out[CANONICAL_FIELDS], stringsAsFactors = FALSE))
   }
   
-  data.frame(
-    path                  = path,
-    filename              = fname,
-    pollutant             = m[1, 2],
-    unbias_sequence       = m[1, 3],
-    calibration_method    = m[1, 4],
-    correction_algorithm  = m[1, 5],
-    spatialization_method = ifelse(is.na(m[1, 6]), NA_character_, m[1, 6]),
-    scenario_year         = as.integer(m[1, 7]),
-    stringsAsFactors      = FALSE
-  )
+  warning("Unrecognised filename format: ", fname)
+  return(NULL)
 }
 
 # ── Collect file metadata ─────────────────────────────────────────────────────
@@ -53,33 +134,28 @@ cat(sprintf("Files parsed           : %d\n", nrow(file_meta)))
 
 # ── Define expected combinations (robust) ─────────────────────────────────────
 
-# combinazioni di metodi (indipendenti da pollutant/year)
+# Unique method combinations (schema-agnostic)
 method_combos <- file_meta %>%
-  distinct(unbias_sequence,
-           calibration_method,
-           correction_algorithm,
-           spatialization_method)
+  distinct(unbias_sequence, calibration_method,
+           correction_algorithm, spatialization_method)
 
-# dimensioni complete di pollutant e year
-pollutant_year <- file_meta %>%
-  distinct(pollutant, scenario_year)
+# Unique pollutant × year × run_type combinations
+pollutant_year_runtype <- file_meta %>%
+  distinct(pollutant, scenario_year, run_type)
 
-# prodotto cartesiano
-expected_grid <- merge(method_combos, pollutant_year)
+# Full Cartesian product
+expected_grid <- merge(method_combos, pollutant_year_runtype)
 
 # ── Identify missing combinations (no TIFF) ───────────────────────────────────
 
 missing_meta <- expected_grid %>%
   left_join(file_meta,
-            by = c("pollutant",
-                   "unbias_sequence",
-                   "calibration_method",
-                   "correction_algorithm",
-                   "spatialization_method",
-                   "scenario_year")) %>%
+            by = c("pollutant", "unbias_sequence", "calibration_method",
+                   "correction_algorithm", "spatialization_method",
+                   "scenario_year", "run_type")) %>%
   filter(is.na(path)) %>%
   mutate(
-    path = NA_character_,
+    path     = NA_character_,
     filename = NA_character_
   )
 
@@ -87,101 +163,49 @@ missing_meta <- expected_grid %>%
 
 extract_global_stats <- function(row) {
   
-  file_info <- tryCatch(
-    file.info(row$path),
-    error = function(e) NULL
-  )
+  file_info <- tryCatch(file.info(row$path), error = function(e) NULL)
   
-  r <- tryCatch(
-    rast(row$path),
-    error = function(e) {
-      warning("Cannot read raster: ", row$path, " — ", e$message)
-      return(NULL)
-    }
-  )
+  r <- tryCatch(rast(row$path), error = function(e) {
+    warning("Cannot read raster: ", row$path, " — ", e$message)
+    NULL
+  })
   
-  if (is.null(r)) {
-    return(data.frame(
+  make_result <- function(valid, error_type, pixel_values = numeric(0)) {
+    has_values <- length(pixel_values) > 0
+    data.frame(
       row,
-      valid_raster = FALSE,
-      error_type   = "read_error",
-      file_size = if (!is.null(file_info)) file_info$size else NA_real_,
-      file_mtime = if (!is.null(file_info)) format(file_info$mtime, "%Y-%m-%d %H:%M:%S") else NA_character_,
-      stat_min    = NA_real_,
-      stat_q25    = NA_real_,
-      stat_median = NA_real_,
-      stat_mean   = NA_real_,
-      stat_q75    = NA_real_,
-      stat_max    = NA_real_,
-      stat_sd     = NA_real_,
+      valid_raster = valid,
+      error_type   = error_type,
+      file_size    = if (!is.null(file_info)) file_info$size  else NA_real_,
+      file_mtime   = if (!is.null(file_info)) format(file_info$mtime, "%Y-%m-%d %H:%M:%S") else NA_character_,
+      stat_min     = if (has_values) min(pixel_values)              else NA_real_,
+      stat_q25     = if (has_values) quantile(pixel_values, 0.25)   else NA_real_,
+      stat_median  = if (has_values) median(pixel_values)           else NA_real_,
+      stat_mean    = if (has_values) mean(pixel_values)             else NA_real_,
+      stat_q75     = if (has_values) quantile(pixel_values, 0.75)   else NA_real_,
+      stat_max     = if (has_values) max(pixel_values)              else NA_real_,
+      stat_sd      = if (has_values) sd(pixel_values)               else NA_real_,
       stringsAsFactors = FALSE
-    ))
+    )
   }
   
-  pixel_values <- tryCatch(
-    values(r),
-    error = function(e) {
-      warning("Cannot extract values: ", row$path, " — ", e$message)
-      return(NULL)
-    }
-  )
+  if (is.null(r)) return(make_result(FALSE, "read_error"))
   
-  if (is.null(pixel_values)) {
-    return(data.frame(
-      row,
-      valid_raster = FALSE,
-      error_type   = "values_error",
-      file_size = if (!is.null(file_info)) file_info$size else NA_real_,
-      file_mtime = if (!is.null(file_info)) format(file_info$mtime, "%Y-%m-%d %H:%M:%S") else NA_character_,
-      stat_min    = NA_real_,
-      stat_q25    = NA_real_,
-      stat_median = NA_real_,
-      stat_mean   = NA_real_,
-      stat_q75    = NA_real_,
-      stat_max    = NA_real_,
-      stat_sd     = NA_real_,
-      stringsAsFactors = FALSE
-    ))
-  }
+  pixel_values <- tryCatch(as.vector(values(r)), error = function(e) {
+    warning("Cannot extract values: ", row$path, " — ", e$message)
+    NULL
+  })
   
-  pixel_values <- as.vector(pixel_values)
+  if (is.null(pixel_values)) return(make_result(FALSE, "values_error"))
+  
   pixel_values <- pixel_values[is.finite(pixel_values)]
   
   if (length(pixel_values) == 0) {
     warning("No finite pixel values in: ", row$path)
-    
-    return(data.frame(
-      row,
-      valid_raster = FALSE,
-      error_type   = "no_finite_values",
-      file_size = if (!is.null(file_info)) file_info$size else NA_real_,
-      file_mtime = if (!is.null(file_info)) format(file_info$mtime, "%Y-%m-%d %H:%M:%S") else NA_character_,
-      stat_min    = NA_real_,
-      stat_q25    = NA_real_,
-      stat_median = NA_real_,
-      stat_mean   = NA_real_,
-      stat_q75    = NA_real_,
-      stat_max    = NA_real_,
-      stat_sd     = NA_real_,
-      stringsAsFactors = FALSE
-    ))
+    return(make_result(FALSE, "no_finite_values"))
   }
   
-  data.frame(
-    row,
-    valid_raster = TRUE,
-    error_type   = NA_character_,
-    file_size = if (!is.null(file_info)) file_info$size else NA_real_,
-    file_mtime = if (!is.null(file_info)) format(file_info$mtime, "%Y-%m-%d %H:%M:%S") else NA_character_,
-    stat_min    = min(pixel_values),
-    stat_q25    = quantile(pixel_values, 0.25),
-    stat_median = median(pixel_values),
-    stat_mean   = mean(pixel_values),
-    stat_q75    = quantile(pixel_values, 0.75),
-    stat_max    = max(pixel_values),
-    stat_sd     = sd(pixel_values),
-    stringsAsFactors = FALSE
-  )
+  make_result(TRUE, NA_character_, pixel_values)
 }
 
 cat("Extracting global raster statistics...\n")
@@ -199,8 +223,8 @@ close(pb)
 stats_df <- bind_rows(stats_list)
 
 cat(sprintf("Rasters processed      : %d\n", nrow(stats_df)))
-cat(sprintf("Valid rasters          : %d\n", sum(stats_df$valid_raster, na.rm = TRUE)))
-cat(sprintf("Invalid rasters        : %d\n", sum(!stats_df$valid_raster, na.rm = TRUE)))
+cat(sprintf("Valid rasters          : %d\n",  sum( stats_df$valid_raster, na.rm = TRUE)))
+cat(sprintf("Invalid rasters        : %d\n",  sum(!stats_df$valid_raster, na.rm = TRUE)))
 
 # ── Add missing TIFF combinations to stats ────────────────────────────────────
 
@@ -210,13 +234,13 @@ missing_stats <- missing_meta %>%
     error_type   = "missing_tif",
     file_size    = NA_real_,
     file_mtime   = NA_character_,
-    stat_min    = NA_real_,
-    stat_q25    = NA_real_,
-    stat_median = NA_real_,
-    stat_mean   = NA_real_,
-    stat_q75    = NA_real_,
-    stat_max    = NA_real_,
-    stat_sd     = NA_real_
+    stat_min     = NA_real_,
+    stat_q25     = NA_real_,
+    stat_median  = NA_real_,
+    stat_mean    = NA_real_,
+    stat_q75     = NA_real_,
+    stat_max     = NA_real_,
+    stat_sd      = NA_real_
   )
 
 stats_df <- bind_rows(stats_df, missing_stats)
@@ -226,12 +250,14 @@ cat(sprintf("Missing rasters        : %d\n", sum(is.na(stats_df$filename))))
 
 dir.create(dirname(OUTPUT_CSV), showWarnings = FALSE, recursive = TRUE)
 write.csv(stats_df, OUTPUT_CSV, row.names = FALSE)
-
 cat(sprintf("Statistics CSV written : %s\n", OUTPUT_CSV))
+
+# ── Summary of invalid rasters ────────────────────────────────────────────────
 
 stats_df %>%
   filter(!valid_raster) %>%
-  group_by(scenario_year, pollutant, 
+  group_by(scenario_year, run_type, pollutant,
            method = glue("{unbias_sequence}.{calibration_method}.{correction_algorithm}")) %>%
-  summarize(spatialization_method = paste0(spatialization_method, collapse=",")) %>%
+  summarize(spatialization_method = paste0(spatialization_method, collapse = ","),
+            .groups = "drop") %>%
   knitr::kable()
