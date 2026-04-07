@@ -14,37 +14,34 @@ read_data <- function(parameter,
                                       "closest_to_center")) {
   
   # Helper function to read NetCDF file as SpatRaster
-  read_nc <- function(file) {
-    # Check if file exists
+  read_nc <- function(file, varname) {
     if (!file.exists(file)) {
       stop("File not found: ", file)
     }
     
-    # Open the NetCDF file
     nc_data <- nc_open(file)
     
-    # Extract variable data (assuming it's the first variable)
-    var_data <- ncvar_get(nc_data, nc_data$var[[1]]$name)
+    # Check variable exists
+    if (!(varname %in% names(nc_data$var))) {
+      stop("Variable ", varname, " not found in file: ", file)
+    }
     
-    # Get the latitude and longitude coordinates
-    lon <- ncvar_get(nc_data, "lon")  # Longitude
-    lat <- ncvar_get(nc_data, "lat")  # Latitude
+    var_data <- ncvar_get(nc_data, varname)
     
-    # Compute resolution (assuming uniform grid spacing)
-    res_x <- mean(diff(lon))  # Resolution in X direction
-    res_y <- mean(diff(lat))  # Resolution in Y direction
+    lon <- ncvar_get(nc_data, "lon")
+    lat <- ncvar_get(nc_data, "lat")
     
-    # Compute new extent by shifting from center-based to corner-based convention
+    res_x <- mean(diff(lon))
+    res_y <- mean(diff(lat))
+    
     xmin_new <- min(lon) - res_x / 2
     xmax_new <- max(lon) + res_x / 2
     ymin_new <- min(lat) - res_y / 2
     ymax_new <- max(lat) + res_y / 2
     
-    # Convert data to SpatRaster (flipping Y direction if necessary)
     raster_data <- rast(t(var_data)[ncol(var_data):1,], crs="EPSG:4326")
     ext(raster_data) <- c(xmin_new, xmax_new, ymin_new, ymax_new)
     
-    # Close the NetCDF file
     nc_close(nc_data)
     
     return(raster_data)
@@ -55,16 +52,21 @@ read_data <- function(parameter,
     stop("scenario_year must be specified for fairmode_phase2 exercise")
   }
   
-  # Define file paths for each type of data
+  # Define codes for parameters
   obs_code <- case_when(
     parameter == "NO2" ~ "NO2",
     parameter == "O3" ~ "O3",
     parameter == "PM25" ~ "PM25"
   )
+  mod_code <- case_when(
+    parameter == "NO2" ~ "SURF_ug_NO2",
+    parameter == "O3" ~ "SURF_ug_O3",
+    parameter == "PM25" ~ "SURF_ug_PM25_rh50"
+  )
   
   # Load base case (2015) gridded data
   base_case_gridded_file <- glue("{data_path}/BaseCase_2015_Gridded/EMEP_yearly_2015.nc")
-  base_case <- read_nc(base_case_gridded_file)
+  base_case <- read_nc(base_case_gridded_file, mod_code)
   
   # Load observed data from 2015
   observed_data_file <- glue("{data_path}/BaseCase_2015_Points/yearly_{obs_code}_2015.csv")
@@ -107,7 +109,7 @@ read_data <- function(parameter,
   } else {
     # Load scenario gridded data for the specified year
     scenario_gridded_file <- glue("{data_path}/Scenario_{scenario_year}_Gridded/EMEP_yearly_{scenario_year}.nc")
-    scenario <- read_nc(scenario_gridded_file)
+    scenario <- read_nc(scenario_gridded_file, mod_code)
     flog.info("Loaded scenario gridded data for year: %s", scenario_year)
   }
   
