@@ -81,20 +81,30 @@ source("R/unbias-aq-scenario.R")
 # Create output directory if it does not exist
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 
-# Function to check if a given combination of unbias sequence and calibration method is valid
+# Function to check if a given combination of unbias sequence, calibration method,
+# and correction algorithm is valid according to the classification scheme described in
+# https://doi.org/10.5281/zenodo.15188017
 is_valid_combination <- function(unbias_sequence, calibration_method, correction_algorithm) {
-  if (!correction_algorithm %in% c("Add", "Mult") && calibration_method %in% c("Each", "Cell")) {
-    return(FALSE)
-  }
+  
+  # SCA sequences spatialize first, so calibration must operate on gridded data
+  # (Grid, Cell, or Neigh); point-based strategies (Each, All) are not permitted
   if (unbias_sequence == "SCA" && calibration_method %in% c("Each", "All")) {
     return(FALSE)
   }
-  if (unbias_sequence %in% c("CAS", "CA") && !calibration_method %in% c("Each", "All")) {
+  
+  # CAS, CA, and CSA sequences calibrate at observation points, so only point-based
+  # strategies (Each, All) are valid; grid-based strategies are not permitted
+  if (unbias_sequence %in% c("CAS", "CA", "CSA") && !calibration_method %in% c("Each", "All")) {
     return(FALSE)
   }
-  if (unbias_sequence == "CSA" && calibration_method != "Each") {
+  
+  # Complex adjustment algorithms (Lin, Quant) require pooled data to fit their parameters
+  # and cannot be calibrated at a single point or cell; only All or Grid are appropriate.
+  # Simple algorithms (Add, Mult) are compatible with any calibration strategy
+  if (!correction_algorithm %in% c("Add", "Mult") && calibration_method %in% c("Each", "Cell")) {
     return(FALSE)
   }
+  
   return(TRUE)
 }
 
