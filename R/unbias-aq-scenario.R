@@ -3,6 +3,39 @@ source("R/spatialize-points-to-grid.R")
 source("R/calibrate-unbias-coefficients.R")
 source("R/apply-unbiasing.R")
 
+# Function to check if a given combination of unbias sequence, calibration method,
+# and correction algorithm is valid according to the classification scheme described in
+# https://doi.org/10.5281/zenodo.15188017
+is_valid_combination <- function(unbias_sequence, calibration_method, correction_algorithm) {
+  
+  # SCA sequences spatialize first, so calibration must operate on gridded data
+  # (Grid, Cell, or Neigh); point-based strategies (Each, All) are not permitted
+  if (unbias_sequence == "SCA" && calibration_method %in% c("Each", "All")) {
+    return(FALSE)
+  }
+  
+  # CAS, CA, and CSA sequences calibrate at observation points, so only point-based
+  # strategies (Each, All) are valid; grid-based strategies are not permitted
+  if (unbias_sequence %in% c("CAS", "CA", "CSA") && !calibration_method %in% c("Each", "All")) {
+    return(FALSE)
+  }
+  
+  # Complex adjustment algorithms (Lin, Quant) require pooled data to fit their parameters
+  # and cannot be calibrated at a single point or cell; only All or Grid are appropriate.
+  # Simple algorithms (Add, Mult) are compatible with any calibration strategy
+  if (!correction_algorithm %in% c("Add", "Mult") && calibration_method %in% c("Each", "Cell")) {
+    return(FALSE)
+  }
+  
+  # CSA with All calibration produces a scalar coefficient that cannot be spatialized;
+  # use CA with All instead
+  if (unbias_sequence == "CSA" && calibration_method == "All") {
+    return(FALSE)
+  }
+  
+  return(TRUE)
+}
+
 # Main process function
 process_data <- function(observed_data, base_case, scenario, 
                          unbias_sequence       = c("SCA", "CSA", "CAS", "CA"), 
@@ -17,20 +50,15 @@ process_data <- function(observed_data, base_case, scenario,
   if (unbias_sequence != "CA") {
     spatialization_method <- match.arg(spatialization_method)
   }
-  
-  # Check calibration method restrictions for each unbias_sequence
-  if (unbias_sequence == "SCA" && !calibration_method %in% c("Grid", "Cell", "Neigh")) {
-    stop("For sequence 'SCA', calibration method must be one of 'Grid', 'Cell', or 'Neigh'.")
-  }
-  if (unbias_sequence %in% c("CAS", "CA") && !calibration_method %in% c("All", "Each")) {
-    stop("For sequences 'CAS', and 'CA', calibration method must be 'All' or 'Each'.")
-  }
-  if (unbias_sequence == "CSA" && calibration_method != "Each") {
-    stop("For sequence 'CSA' calibration method must be 'Each'.")
-  }
-  # Check compatibility between calibration method and correction algorithm
-  if (calibration_method %in% c("Each", "Cell") && !correction_algorithm %in% c("Add", "Mult")) {
-    stop("Calibration methods 'Each' and 'Cell' are only compatible with correction algorithms 'Add' and 'Mult'.")
+
+  # Check if the combination is valid
+  if (!is_valid_combination(unbias_sequence, calibration_method, correction_algorithm)) {
+    flog.error("Invalid combination for pollutant %s: %s.%s.%s%s", 
+              pollutant, unbias_sequence, calibration_method, 
+              correction_algorithm, 
+              ifelse(is.null(spatialization_method), "", paste0(".", spatialization_method))
+    )
+    stop(1)
   }
   
   # Execute based on the chosen unbias_sequence
