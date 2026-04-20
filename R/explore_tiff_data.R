@@ -10,8 +10,8 @@ library(glue)
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-INPUT_DIR  <- "data/processed_italian/"
-OUTPUT_CSV <- "output/italian_exercise/output_stats.csv"
+INPUT_DIR  <- "data/processed_phase2/"
+OUTPUT_CSV <- "output/fairmode_phase2/output_stats.csv"
 
 # ── Filename schemas ──────────────────────────────────────────────────────────
 #
@@ -170,12 +170,13 @@ extract_global_stats <- function(row) {
     NULL
   })
   
-  make_result <- function(valid, error_type, pixel_values = numeric(0)) {
+  make_result <- function(valid, error_type, pixel_values = numeric(0), n_na = 0L) {
     has_values <- length(pixel_values) > 0
     data.frame(
       row,
       valid_raster = valid,
       error_type   = error_type,
+      n_na_pixels  = n_na,
       file_size    = if (!is.null(file_info)) file_info$size  else NA_real_,
       file_mtime   = if (!is.null(file_info)) format(file_info$mtime, "%Y-%m-%d %H:%M:%S") else NA_character_,
       stat_min     = if (has_values) min(pixel_values)              else NA_real_,
@@ -197,15 +198,20 @@ extract_global_stats <- function(row) {
   })
   
   if (is.null(pixel_values)) return(make_result(FALSE, "values_error"))
+  n_na <- sum(is.na(pixel_values) | is.nan(pixel_values) | is.infinite(pixel_values))
+  pixel_values <- pixel_values[is.finite(pixel_values)]
   
   pixel_values <- pixel_values[is.finite(pixel_values)]
   
   if (length(pixel_values) == 0) {
     warning("No finite pixel values in: ", row$path)
-    return(make_result(FALSE, "no_finite_values"))
+    return(make_result(FALSE, "no_finite_values", n_na = n_na))
   }
   
-  make_result(TRUE, NA_character_, pixel_values)
+  make_result(TRUE,
+              error_type = if (n_na > 0) "has_na_pixels" else NA_character_,
+              pixel_values,
+              n_na = n_na)
 }
 
 cat("Extracting global raster statistics...\n")
@@ -232,6 +238,7 @@ missing_stats <- missing_meta %>%
   mutate(
     valid_raster = FALSE,
     error_type   = "missing_tif",
+    n_na_pixels  = NA_integer_,  
     file_size    = NA_real_,
     file_mtime   = NA_character_,
     stat_min     = NA_real_,
