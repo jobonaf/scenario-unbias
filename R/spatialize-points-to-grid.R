@@ -6,8 +6,8 @@
 #                 reprojection to planar coordinates (EPSG:3035) for geographic
 #                 CRS to ensure numerical stability.
 # author         :Giovanni Bonafe'
-# date           :20250209
-# version        :1.6
+# date           :20250420
+# version        :1.7
 # notes          :Requires tidyverse, terra, fields, gstat, futile.logger,
 #                 parallel, rlang, glue.
 # R_version      :3.5.2
@@ -58,7 +58,7 @@ safe_cores <- function(requested = NULL) {
 }
 
 # Check whether a fitted variogram is degenerate (implausible parameters)
-is_degenerate_variogram <- function(vgm_fit, max_range = 45) {
+is_degenerate_variogram <- function(vgm_fit, max_range = NULL) {
   if (is.null(vgm_fit) || nrow(vgm_fit) < 2) return(TRUE)
   
   nugget    <- vgm_fit$psill[1]
@@ -70,7 +70,9 @@ is_degenerate_variogram <- function(vgm_fit, max_range = 45) {
   if (is.na(sill)     || sill      <= 0)        return(TRUE)
   if (is.na(sill_comp)|| sill_comp <= 0)        return(TRUE)
   if (nugget >= 0.99 * sill)                    return(TRUE)
-  if (range  >  max_range)                      return(TRUE)
+  
+  # If max_range is provided, check against it
+  if (!is.null(max_range) && range > max_range) return(TRUE)
   
   return(FALSE)
 }
@@ -160,9 +162,9 @@ fit_variogram_model <- function(formula, gstat_data, values, params,
   }
   
   # If all strategies fail, return a numerically stable exponential model
-  flog.warn(glue("[{label}] Using manual stable spherical model"))
+  flog.warn(glue("[{label}] Using manual stable exponential model"))
   vgm(psill = 0.8 * data_var, 
-      model = "Sph", 
+      model = "Exp", 
       range = max_range / 2,          
       nugget = 0.2 * data_var)
 }
@@ -197,6 +199,7 @@ na_raster <- function(template) {
 }
 
 # Clip extreme tails of a raster (0.1% and 99.9% quantiles) for numerical stability
+# NOT USED ANYMORE
 clip_data <- function(grid_data) {
   vals <- values(grid_data)
   
@@ -333,15 +336,19 @@ spatialize <- function(points_data, grid_data,
       return(na_raster(empty_grid))
     }
     
+    # Use nmax from params or a sensible default; maxdist is optional
+    nmax_ok   <- params$nmax   %||% 200
+    maxdist_ok <- params$maxdist %||% 2000000
+    
     gstat_model <- gstat(NULL, "var", var ~ 1,
                          data      = gstat_data,
                          locations = ~x + y,
                          model     = fit_vgm,
-                         nmax      = 300,
-                         maxdist   = 2.5e6)
+                         nmax      = nmax_ok,
+                         maxdist   = maxdist_ok)
     
     options(gstat.cn_max = 1e6)
-    result <- run_kriging(clip_data(grid_data), gstat_model, label = "OK")
+    result <- run_kriging(grid_data, gstat_model, label = "OK")
     
     # ----------------------------------------------------------------------------
     # Kriging with External Drift
@@ -380,15 +387,18 @@ spatialize <- function(points_data, grid_data,
       return(na_raster(empty_grid))
     }
     
+    nmax_ked   <- params$nmax   %||% 200
+    maxdist_ked <- params$maxdist %||% 2000000
+    
     gstat_model <- gstat(NULL, "var", model_formula,
                          data      = ked_data,
                          locations = ~x + y,
                          model     = fit_vgm,
-                         nmax      = 300,
-                         maxdist   = 2.5e6)
+                         nmax      = nmax_ked,
+                         maxdist   = maxdist_ked)
     
     options(gstat.cn_max = 1e6)
-    result <- run_kriging(clip_data(grid_data), gstat_model, label = "KED")
+    result <- run_kriging(grid_data, gstat_model, label = "KED")
   }
   
   # ----------------------------------------------------------------------------
