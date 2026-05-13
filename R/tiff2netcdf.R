@@ -127,7 +127,6 @@ if(exercise=="phase2") {
     info <- strsplit(basename(f), "_")[[1]][2]
     infos <- strsplit(info,"\\.")[[1]]
     year <- tools::file_path_sans_ext(strsplit(basename(f), "_")[[1]][5])
-    if(length(infos)==4) infos[4] <- str_to_upper(infos[4])
     fileout <- glue("{dir_out}/Scen_{year}_{group}_{specie}_{paste(infos,collapse='.')}_CORR_YEARLY.nc")
     tiff_to_netcdf(input_file = f, output_file = fileout, overwrite = T, varname = varname, unit = unit)
     flog.info(glue("Written file {fileout}"))
